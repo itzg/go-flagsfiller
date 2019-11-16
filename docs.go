@@ -85,6 +85,10 @@ For example:
 
 results in a three element slice.
 
+The default tag's value is provided as a comma-separated list, such as
+
+	MultiValues []string `default:"one,two,three"`
+
 Maps of String to String
 
 FlagSetFiller also includes support for map[string]string fields.
@@ -96,6 +100,10 @@ For example:
 	--arg k1=v1 --arg k2=v2,k3=v3
 
 results in a map with three entries.
+
+The default tag's value is provided a comma-separate list of key=value entries, such as
+
+	Mappings map[string]string `default:"k1=v1,k2=v2,k3=v3"`
 
 */
 package flagsfiller
