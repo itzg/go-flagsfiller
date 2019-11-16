@@ -21,7 +21,7 @@ type Config struct {
 func main() {
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 	err := filler.Fill(flag.CommandLine, &config)
 	if err != nil {
 		log.Fatal(err)

@@ -9,14 +9,18 @@ import (
 	"time"
 )
 
+// FlagSetFiller is used to map the fields of a struct into flags of a flag.FlagSet
 type FlagSetFiller struct {
 	options *fillerOptions
 }
 
-func NewFlagSetFiller(options ...FillerOption) *FlagSetFiller {
+// New creates a new FlagSetFiller with zero or more of the given FillerOption's
+func New(options ...FillerOption) *FlagSetFiller {
 	return &FlagSetFiller{options: newFillerOptions(options)}
 }
 
+// Fill populates the flagSet with a flag for each field in given struct passed in the 'from'
+// argument which must be a struct reference.
 func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	v := reflect.ValueOf(from)
 	t := v.Type()
@@ -24,7 +28,6 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 		return f.walkFields(flagSet, "", v.Elem(), t.Elem())
 	} else {
 		return fmt.Errorf("can only fill from struct pointer, but it was %s", t.Kind())
-
 	}
 }
 
@@ -73,7 +76,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 
 	usage := tag.Get("usage")
 	tagDefault, hasDefaultTag := tag.Lookup("default")
-	renamed := f.options.RenameLongName(name)
+	renamed := f.options.renameLongName(name)
 	var err error
 
 	switch {

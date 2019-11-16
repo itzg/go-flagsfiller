@@ -21,7 +21,7 @@ func TestStringFields(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -41,7 +41,7 @@ func TestUsage(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -66,7 +66,7 @@ func TestRenamerOption(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller(flagsfiller.WithFieldRenamer(strcase.ToSnake))
+	filler := flagsfiller.New(flagsfiller.WithFieldRenamer(strcase.ToSnake))
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -89,7 +89,7 @@ func TestNestedFields(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -113,7 +113,7 @@ func TestNestedStructPtr(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -134,7 +134,7 @@ func TestPtrField(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -155,7 +155,7 @@ func TestDuration(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -180,7 +180,7 @@ func TestDefaultsViaLiteral(t *testing.T) {
 		Timeout: 5 * time.Second,
 	}
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -210,7 +210,7 @@ func TestDefaultsViaTag(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -249,7 +249,7 @@ func TestBadDefaultsViaTag(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			filler := flagsfiller.NewFlagSetFiller()
+			filler := flagsfiller.New()
 
 			var flagset flag.FlagSet
 			err := filler.Fill(&flagset, tt.Config)
@@ -265,7 +265,7 @@ func TestBadFieldErrorMessage(t *testing.T) {
 
 	var config BadBoolConfig
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -281,7 +281,7 @@ func TestHiddenFields(t *testing.T) {
 
 	var config Config
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
@@ -306,7 +306,7 @@ func ExampleBasic() {
 
 	flagset := flag.NewFlagSet("ExampleBasic", flag.ExitOnError)
 
-	filler := flagsfiller.NewFlagSetFiller()
+	filler := flagsfiller.New()
 	err := filler.Fill(flagset, &config)
 	if err != nil {
 		log.Fatal(err)
