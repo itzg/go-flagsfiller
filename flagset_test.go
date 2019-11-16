@@ -295,7 +295,7 @@ func TestHiddenFields(t *testing.T) {
 	assert.Equal(t, "", buf.String())
 }
 
-func ExampleBasic() {
+func Example() {
 	type Config struct {
 		Host    string        `default:"localhost" usage:"The remote host"`
 		Enabled bool          `default:"true" usage:"Turn it on"`
