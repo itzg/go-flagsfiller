@@ -1,5 +1,7 @@
 # go-flagsfiller
 
+[![](https://godoc.org/github.com/itzg/go-flagsfiller?status.svg)](http://godoc.org/github.com/itzg/go-flagsfiller)
+
 Bring your own struct and make Go's flag package pleasant to use.
 
 ## Install
