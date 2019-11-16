@@ -3,12 +3,10 @@ package flagsfiller_test
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/itzg/go-flagsfiller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
 	"testing"
 	"time"
 )
@@ -331,29 +329,75 @@ func TestHiddenFields(t *testing.T) {
 	assert.Equal(t, "", buf.String())
 }
 
-func Example() {
+func TestStringSlice(t *testing.T) {
 	type Config struct {
-		Host    string        `default:"localhost" usage:"The remote host"`
-		Enabled bool          `default:"true" usage:"Turn it on"`
-		Timeout time.Duration `default:"5s" usage:"How long to wait"`
+		NoDefault       []string
+		InstanceDefault []string
+		TagDefault      []string `default:"one,two"`
 	}
 
 	var config Config
-
-	flagset := flag.NewFlagSet("ExampleBasic", flag.ExitOnError)
+	config.InstanceDefault = []string{"apple", "orange"}
 
 	filler := flagsfiller.New()
-	err := filler.Fill(flagset, &config)
-	if err != nil {
-		log.Fatal(err)
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -instance-default value
+    	 (default apple,orange)
+  -no-default value
+    	
+  -tag-default value
+    	 (default one,two)
+`, buf.String())
+
+	err = flagset.Parse([]string{"--no-default", "nd1", "--no-default", "nd2", "--no-default", "nd3,nd4"})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"nd1", "nd2", "nd3", "nd4"}, config.NoDefault)
+}
+
+func TestStringToStringMap(t *testing.T) {
+	type Config struct {
+		NoDefault       map[string]string
+		InstanceDefault map[string]string
+		TagDefault      map[string]string `default:"fruit=apple,veggie=carrot"`
 	}
 
-	err = flagset.Parse([]string{"--host", "external.svc", "--timeout", "10m"})
-	if err != nil {
-		log.Fatal(err)
-	}
+	var config Config
+	config.InstanceDefault = map[string]string{"fruit": "orange"}
 
-	fmt.Printf("%+v\n", config)
-	// Output:
-	// {Host:external.svc Enabled:true Timeout:10m0s}
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -instance-default value
+    	 (default fruit=orange)
+  -no-default value
+    	
+  -tag-default value
+    	 (default fruit=apple,veggie=carrot)
+`, buf.String())
+
+	err = flagset.Parse([]string{"--no-default", "k1=v1", "--no-default", "k2=v2,k3=v3"})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}, config.NoDefault)
+	assert.Equal(t, map[string]string{"fruit": "apple", "veggie": "carrot"}, config.TagDefault)
 }

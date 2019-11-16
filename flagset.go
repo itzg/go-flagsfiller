@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
 var (
-	durationType = reflect.TypeOf(time.Duration(0))
+	durationType          = reflect.TypeOf(time.Duration(0))
+	stringSliceType       = reflect.TypeOf([]string{})
+	stringToStringMapType = reflect.TypeOf(map[string]string{})
 )
 
 // FlagSetFiller is used to map the fields of a struct into flags of a flag.FlagSet
@@ -86,21 +89,6 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	var err error
 
 	switch {
-	// NOTE check non builtin types first since they might be an "alias" for a builtin, such as
-	// time.Duration which is aliased from int64
-	case t == durationType:
-		casted := fieldRef.(*time.Duration)
-		var defaultVal time.Duration
-		if hasDefaultTag {
-			defaultVal, err = time.ParseDuration(tagDefault)
-			if err != nil {
-				return errors.New("failed to parse default into time.Duration")
-			}
-		} else {
-			defaultVal = *casted
-		}
-		flagSet.DurationVar(casted, renamed, defaultVal, usage)
-
 	case t.Kind() == reflect.String:
 		casted := fieldRef.(*string)
 		var defaultVal string
@@ -136,6 +124,20 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 			defaultVal = *casted
 		}
 		flagSet.Float64Var(casted, renamed, defaultVal, usage)
+
+	// NOTE check time.Duration before int64 since it is aliased from int64
+	case t == durationType:
+		casted := fieldRef.(*time.Duration)
+		var defaultVal time.Duration
+		if hasDefaultTag {
+			defaultVal, err = time.ParseDuration(tagDefault)
+			if err != nil {
+				return errors.New("failed to parse default into time.Duration")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.DurationVar(casted, renamed, defaultVal, usage)
 
 	case t.Kind() == reflect.Int64:
 		casted := fieldRef.(*int64)
@@ -191,6 +193,97 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		}
 		flagSet.UintVar(casted, renamed, defaultVal, usage)
 
+	case t == stringSliceType:
+		casted := fieldRef.(*[]string)
+		if hasDefaultTag {
+			*casted = parseStringSlice(tagDefault)
+		}
+		flagSet.Var(&strSliceVar{ref: casted}, renamed, usage)
+
+	case t == stringToStringMapType:
+		casted := fieldRef.(*map[string]string)
+		var val map[string]string
+		if hasDefaultTag {
+			val = parseStringToStringMap(tagDefault)
+			*casted = val
+		} else if *casted == nil {
+			val = make(map[string]string)
+			*casted = val
+		} else {
+			val = *casted
+		}
+		flagSet.Var(&strToStrMapVar{val: val}, renamed, usage)
+
 	}
 	return nil
+}
+
+type strSliceVar struct {
+	ref *[]string
+}
+
+func (s *strSliceVar) String() string {
+	if s.ref == nil {
+		return ""
+	}
+	return strings.Join(*s.ref, ",")
+}
+
+func (s *strSliceVar) Set(val string) error {
+	parts := parseStringSlice(val)
+	*s.ref = append(*s.ref, parts...)
+
+	return nil
+}
+
+func parseStringSlice(val string) []string {
+	return strings.Split(val, ",")
+}
+
+type strToStrMapVar struct {
+	val map[string]string
+}
+
+func (s strToStrMapVar) String() string {
+	if s.val == nil {
+		return ""
+	}
+
+	var sb strings.Builder
+	first := true
+	for k, v := range s.val {
+		if !first {
+			sb.WriteString(",")
+		} else {
+			first = false
+		}
+		sb.WriteString(k)
+		sb.WriteString("=")
+		sb.WriteString(v)
+	}
+	return sb.String()
+}
+
+func (s strToStrMapVar) Set(val string) error {
+	content := parseStringToStringMap(val)
+	for k, v := range content {
+		s.val[k] = v
+	}
+	return nil
+}
+
+func parseStringToStringMap(val string) map[string]string {
+	result := make(map[string]string)
+
+	pairs := strings.Split(val, ",")
+	for _, pair := range pairs {
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) == 2 {
+			result[kv[0]] = kv[1]
+		} else {
+			result[kv[0]] = ""
+		}
+	}
+
+	return result
 }

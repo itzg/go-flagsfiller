@@ -25,6 +25,9 @@ import "github.com/itzg/go-flagsfiller"
 - Falls back to using instance field values as declared default
 - Declare flag usage via struct tag `usage`
 - Easily combines with [jamiealquiza/envy](https://github.com/jamiealquiza/envy) for environment variable parsing and [google/subcommands](https://github.com/google/subcommands) for sub-command processing
+- Beyond the standard types supported by flag.FlagSet also includes support for:
+    - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma-separated list of values. For example: `--arg one --arg two,three`
+    - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
 
 ## Quick example
 
