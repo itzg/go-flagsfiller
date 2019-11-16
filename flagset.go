@@ -21,6 +21,8 @@ func New(options ...FillerOption) *FlagSetFiller {
 
 // Fill populates the flagSet with a flag for each field in given struct passed in the 'from'
 // argument which must be a struct reference.
+// Fill returns an error when a non-struct reference is passed as 'from' or a field has a
+// default tag which could not converted to the field's type.
 func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	v := reflect.ValueOf(from)
 	t := v.Type()
