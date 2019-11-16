@@ -26,10 +26,6 @@ import "github.com/itzg/go-flagsfiller"
 - Declare flag usage via struct tag `usage`
 - Easily combines with [jamiealquiza/envy](https://github.com/jamiealquiza/envy) for environment variable parsing and [google/subcommands](https://github.com/google/subcommands) for sub-command processing
 
-### WORK IN PROGRESS
-
-So far only the flag types string, bool, and time.Duration are supported.
-
 ## Quick example
 
 ```go
