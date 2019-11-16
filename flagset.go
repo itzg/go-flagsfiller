@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+var (
+	durationType = reflect.TypeOf(time.Duration(0))
+)
+
 // FlagSetFiller is used to map the fields of a struct into flags of a flag.FlagSet
 type FlagSetFiller struct {
 	options *fillerOptions
@@ -82,6 +86,21 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	var err error
 
 	switch {
+	// NOTE check non builtin types first since they might be an "alias" for a builtin, such as
+	// time.Duration which is aliased from int64
+	case t == durationType:
+		casted := fieldRef.(*time.Duration)
+		var defaultVal time.Duration
+		if hasDefaultTag {
+			defaultVal, err = time.ParseDuration(tagDefault)
+			if err != nil {
+				return errors.New("failed to parse default into time.Duration")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.DurationVar(casted, renamed, defaultVal, usage)
+
 	case t.Kind() == reflect.String:
 		casted := fieldRef.(*string)
 		var defaultVal string
@@ -105,18 +124,72 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		}
 		flagSet.BoolVar(casted, renamed, defaultVal, usage)
 
-	case t == reflect.TypeOf(time.Duration(0)):
-		casted := fieldRef.(*time.Duration)
-		var defaultVal time.Duration
+	case t.Kind() == reflect.Float64:
+		casted := fieldRef.(*float64)
+		var defaultVal float64
 		if hasDefaultTag {
-			defaultVal, err = time.ParseDuration(tagDefault)
+			defaultVal, err = strconv.ParseFloat(tagDefault, 64)
 			if err != nil {
-				return errors.New("failed to parse default into time.Duration")
+				return errors.New("failed to parse default into bool")
 			}
 		} else {
 			defaultVal = *casted
 		}
-		flagSet.DurationVar(casted, renamed, defaultVal, usage)
+		flagSet.Float64Var(casted, renamed, defaultVal, usage)
+
+	case t.Kind() == reflect.Int64:
+		casted := fieldRef.(*int64)
+		var defaultVal int64
+		if hasDefaultTag {
+			defaultVal, err = strconv.ParseInt(tagDefault, 10, 64)
+			if err != nil {
+				return errors.New("failed to parse default into bool")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.Int64Var(casted, renamed, defaultVal, usage)
+
+	case t.Kind() == reflect.Int:
+		casted := fieldRef.(*int)
+		var defaultVal int
+		if hasDefaultTag {
+			defaultVal, err = strconv.Atoi(tagDefault)
+			if err != nil {
+				return errors.New("failed to parse default into bool")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.IntVar(casted, renamed, defaultVal, usage)
+
+	case t.Kind() == reflect.Uint64:
+		casted := fieldRef.(*uint64)
+		var defaultVal uint64
+		if hasDefaultTag {
+			defaultVal, err = strconv.ParseUint(tagDefault, 10, 64)
+			if err != nil {
+				return errors.New("failed to parse default into bool")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.Uint64Var(casted, renamed, defaultVal, usage)
+
+	case t.Kind() == reflect.Uint:
+		casted := fieldRef.(*uint)
+		var defaultVal uint
+		if hasDefaultTag {
+			var asInt int
+			asInt, err = strconv.Atoi(tagDefault)
+			defaultVal = uint(asInt)
+			if err != nil {
+				return errors.New("failed to parse default into bool")
+			}
+		} else {
+			defaultVal = *casted
+		}
+		flagSet.UintVar(casted, renamed, defaultVal, usage)
 
 	}
 	return nil

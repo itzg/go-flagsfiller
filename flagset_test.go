@@ -167,6 +167,42 @@ func TestDuration(t *testing.T) {
 	assert.Equal(t, 10*time.Second, config.Timeout)
 }
 
+func TestNumbers(t *testing.T) {
+	type Config struct {
+		ValFloat64 float64 `default:"3.14"`
+		ValInt64   int64   `default:"43"`
+		ValInt     int     `default:"44"`
+		ValUint64  uint64  `default:"45"`
+		ValUint    uint    `default:"46"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -val-float-64 float
+    	 (default 3.14)
+  -val-int int
+    	 (default 44)
+  -val-int-64 int
+    	 (default 43)
+  -val-uint uint
+    	 (default 46)
+  -val-uint-64 uint
+    	 (default 45)
+`, buf.String())
+}
+
 func TestDefaultsViaLiteral(t *testing.T) {
 	type Config struct {
 		Host    string
