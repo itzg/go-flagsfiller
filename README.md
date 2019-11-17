@@ -25,7 +25,7 @@ import "github.com/itzg/go-flagsfiller"
 - Allows defaults to be given via struct tag `default`
 - Falls back to using instance field values as declared default
 - Declare flag usage via struct tag `usage`
-- Easily combines with [jamiealquiza/envy](https://github.com/jamiealquiza/envy) for environment variable parsing and [google/subcommands](https://github.com/google/subcommands) for sub-command processing
+- Easily combines with [jamiealquiza/envy](https://github.com/jamiealquiza/envy) for environment variable parsing and [google/subcommands](https://github.com/google/subcommands) for sub-command processing. Can also be integrated with [spf13/cobra](https://github.com/spf13/cobra) by using pflag's [AddGoFlagSet](https://godoc.org/github.com/spf13/pflag#FlagSet.AddGoFlagSet)
 - Beyond the standard types supported by flag.FlagSet also includes support for:
     - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma-separated list of values. For example: `--arg one --arg two,three`
     - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
@@ -80,4 +80,36 @@ The following shows an example of the usage provided when passing `--help`:
     	The remote host (default "localhost")
   -max-timeout duration
     	How long to wait (default 5s)
+```
+
+## Real world example
+
+[saml-auth-proxy](https://github.com/itzg/saml-auth-proxy) shows an end-to-end usage of flagsfiller where the main function fills the flags, maps those to environment variables with [envy](https://github.com/jamiealquiza/envy, and parses the command line:
+
+```go
+func main() {
+	var serverConfig server.Config
+
+	filler := flagsfiller.New()
+	err := filler.Fill(flag.CommandLine, &serverConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	envy.Parse("SAML_PROXY")
+	flag.Parse()
+```
+
+where `server.Config` is declared as
+
+```go
+type Config struct {
+	Version                 bool              `usage:"show version and exit"`
+	Bind                    string            `default:":8080" usage:"host:port to bind for serving HTTP"`
+	BaseUrl                 string            `usage:"External URL of this proxy"`
+	BackendUrl              string            `usage:"URL of the backend being proxied"`
+	IdpMetadataUrl          string            `usage:"URL of the IdP's metadata XML"`
+	IdpCaPath               string            `usage:"Optional path to a CA certificate PEM file for the IdP"`
+    // ...see https://github.com/itzg/saml-auth-proxy/blob/master/server/server.go for full set
+}
 ```
