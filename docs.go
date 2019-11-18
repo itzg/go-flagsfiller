@@ -16,8 +16,12 @@ Even a simple struct with no special changes can be used, such as:
 	}
 	var config Config
 
+	// create a FlagSetFiller
 	filler := flagsfiller.New()
+	// fill and map struct fields to flags
 	filler.Fill(flag.CommandLine, &config)
+	// parse command-line like usual
+	flag.Parse()
 
 After calling Parse on the flag.FlagSet, the corresponding fields of the mapped struct will
 be populated with values passed from the command-line.

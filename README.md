@@ -55,13 +55,16 @@ type Config struct {
 
 func main() {
 	var config Config
-
+    
+    // create a FlagSetFiller
 	filler := flagsfiller.New()
+    // fill and map struct fields to flags
 	err := filler.Fill(flag.CommandLine, &config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+    // parse command-line like usual
 	flag.Parse()
 
 	fmt.Printf("Loaded: %+v\n", config)
