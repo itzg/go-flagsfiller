@@ -84,7 +84,7 @@ The following shows an example of the usage provided when passing `--help`:
 
 ## Real world example
 
-[saml-auth-proxy](https://github.com/itzg/saml-auth-proxy) shows an end-to-end usage of flagsfiller where the main function fills the flags, maps those to environment variables with [envy](https://github.com/jamiealquiza/envy, and parses the command line:
+[saml-auth-proxy](https://github.com/itzg/saml-auth-proxy) shows an end-to-end usage of flagsfiller where the main function fills the flags, maps those to environment variables with [envy](https://github.com/jamiealquiza/envy), and parses the command line:
 
 ```go
 func main() {
