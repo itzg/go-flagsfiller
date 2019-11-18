@@ -83,7 +83,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{},
 	name string, t reflect.Type, tag reflect.StructTag) error {
 
-	usage := tag.Get("usage")
+	usage := requoteUsage(tag.Get("usage"))
 	tagDefault, hasDefaultTag := tag.Lookup("default")
 	renamed := f.options.renameLongName(name)
 	var err error
@@ -286,4 +286,18 @@ func parseStringToStringMap(val string) map[string]string {
 	}
 
 	return result
+}
+
+// requoteUsage converts a [name] quoted usage string into the back quote form processed by flag.UnquoteUsage
+func requoteUsage(usage string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case '[':
+			return '`'
+		case ']':
+			return '`'
+		default:
+			return r
+		}
+	}, usage)
 }

@@ -401,3 +401,27 @@ func TestStringToStringMap(t *testing.T) {
 	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}, config.NoDefault)
 	assert.Equal(t, map[string]string{"fruit": "apple", "veggie": "carrot"}, config.TagDefault)
 }
+
+func TestUsagePlaceholders(t *testing.T) {
+	type Config struct {
+		SomeUrl string `usage:"a [URL] to configure"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -some-url URL
+    	a URL to configure
+`, buf.String())
+}

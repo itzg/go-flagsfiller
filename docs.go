@@ -55,6 +55,17 @@ To declare a flag's usage add a `usage:""` tag to the field, such as:
 		Host string `usage:"the name of the host to access"`
 	}
 
+Since flag.UnquoteUsage normally uses back quotes to locate the argument placeholder name but
+struct tags also use back quotes, flagsfiller will instead use [square brackets] to define the
+placeholder name, such as:
+
+	SomeUrl      string `usage:"a [URL] to configure"`
+
+results in the rendered output:
+
+	-some-url URL
+		a URL to configure
+
 Defaults
 
 To declare the default value of a flag, you can either set a field's value before passing the
