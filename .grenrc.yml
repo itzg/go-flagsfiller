@@ -1,0 +1,9 @@
+---
+  dataSource: "commits"
+  prefix: ""
+  includeMessages: "all"
+  ignoreCommitsWith: 
+    - "docs:"
+    - "ci:"
+    - "misc:"
+  changelogFilename: "CHANGELOG.md"
