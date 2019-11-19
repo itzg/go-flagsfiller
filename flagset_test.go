@@ -7,6 +7,7 @@ import (
 	"github.com/itzg/go-flagsfiller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 	"time"
 )
@@ -424,4 +425,30 @@ func TestUsagePlaceholders(t *testing.T) {
   -some-url URL
     	a URL to configure
 `, buf.String())
+}
+
+func TestParse(t *testing.T) {
+	type Config struct {
+		Host string
+	}
+
+	var config Config
+	os.Args = []string{"app", "--host", "host-a"}
+
+	err := flagsfiller.Parse(&config)
+	assert.NoError(t, err)
+
+	require.Equal(t, "host-a", config.Host)
+}
+
+func TestParseError(t *testing.T) {
+	type Config struct {
+		BadDefault int `default:"not an int"`
+	}
+
+	var config Config
+	os.Args = []string{"app", "--bad-default", "5"}
+
+	err := flagsfiller.Parse(&config)
+	assert.Error(t, err)
 }

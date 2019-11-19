@@ -21,6 +21,21 @@ type FlagSetFiller struct {
 	options *fillerOptions
 }
 
+// Parse is a convenience function that creates a FlagSetFiller with the given options,
+// fills and maps the flags from the given struct reference into flag.CommandLine, and uses
+// flag.Parse to parse the os.Args.
+// Returns an error if the given struct could not be used for filling flags.
+func Parse(from interface{}, options ...FillerOption) error {
+	filler := New(options...)
+	err := filler.Fill(flag.CommandLine, from)
+	if err != nil {
+		return err
+	}
+
+	flag.Parse()
+	return nil
+}
+
 // New creates a new FlagSetFiller with zero or more of the given FillerOption's
 func New(options ...FillerOption) *FlagSetFiller {
 	return &FlagSetFiller{options: newFillerOptions(options)}

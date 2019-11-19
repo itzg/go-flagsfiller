@@ -26,6 +26,17 @@ Even a simple struct with no special changes can be used, such as:
 After calling Parse on the flag.FlagSet, the corresponding fields of the mapped struct will
 be populated with values passed from the command-line.
 
+For an even quicker start, flagsfiller provides a convenience Parse function that does the same
+as the snippet above in one call:
+
+	type Config struct {
+		Host string
+		Enabled bool
+	}
+	var config Config
+
+	flagsfiller.Parse(&config)
+
 Flag Naming
 
 By default, the flags are named by taking the field name and performing a word-wise conversion
