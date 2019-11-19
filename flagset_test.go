@@ -589,12 +589,12 @@ func ExampleWithEnv() {
 	}
 
 	// simulate env variables from program invocation
-	os.Setenv("APP_MULTI_WORD_NAME", "from env")
+	os.Setenv("MY_APP_MULTI_WORD_NAME", "from env")
 
 	var config Config
 
 	// enable environment variable processing with given prefix
-	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+	filler := flagsfiller.New(flagsfiller.WithEnv("MyApp"))
 	var flagset flag.FlagSet
 	filler.Fill(&flagset, &config)
 
