@@ -3,6 +3,7 @@ package flagsfiller_test
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/itzg/go-flagsfiller"
 	"github.com/stretchr/testify/assert"
@@ -305,7 +306,7 @@ func TestBadFieldErrorMessage(t *testing.T) {
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
 	require.Error(t, err)
-	assert.Equal(t, "failed to process Enabled of flagsfiller_test.BadBoolConfig: failed to parse default into bool", err.Error())
+	assert.Equal(t, "failed to process Enabled of flagsfiller_test.BadBoolConfig: failed to parse default into bool: strconv.ParseBool: parsing \"wrong\": invalid syntax", err.Error())
 
 }
 
@@ -501,4 +502,63 @@ func TestIgnoreNonExportedStructFields(t *testing.T) {
   -host string
     	
 `, buf.String())
+}
+
+func TestWithEnv(t *testing.T) {
+	type Config struct {
+		Host          string `default:"localhost" usage:"the host to use"`
+		MultiWordName string
+	}
+
+	var config Config
+
+	assert.NoError(t, os.Setenv("APP_HOST", "host from env"))
+	assert.NoError(t, os.Setenv("APP_MULTI_WORD_NAME", "value from env"))
+
+	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -host string
+    	the host to use (env APP_HOST) (default "localhost")
+  -multi-word-name string
+    	 (env APP_MULTI_WORD_NAME)
+`, buf.String())
+
+	err = flagset.Parse([]string{"--host", "host from args"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "host from args", config.Host)
+	assert.Equal(t, "value from env", config.MultiWordName)
+}
+
+func ExampleWithEnv() {
+	type Config struct {
+		MultiWordName string
+	}
+
+	// simulate env variables from program invocation
+	os.Setenv("APP_MULTI_WORD_NAME", "from env")
+
+	var config Config
+
+	// enable environment variable processing with given prefix
+	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+	var flagset flag.FlagSet
+	filler.Fill(&flagset, &config)
+
+	// simulate no args passed in
+	flagset.Parse([]string{})
+
+	fmt.Println(config.MultiWordName)
+	// Output:
+	// from env
 }

@@ -1,6 +1,6 @@
 # go-flagsfiller
 
-[![](https://godoc.org/github.com/itzg/go-flagsfiller?status.svg)](http://godoc.org/github.com/itzg/go-flagsfiller)
+[![](https://godoc.org/github.com/itzg/go-flagsfiller?status.svg)](https://godoc.org/github.com/itzg/go-flagsfiller)
 [![](https://img.shields.io/badge/go.dev-module-007D9C)](https://pkg.go.dev/github.com/itzg/go-flagsfiller)
 
 Bring your own struct and make Go's flag package pleasant to use.
@@ -25,10 +25,11 @@ import "github.com/itzg/go-flagsfiller"
 - Allows defaults to be given via struct tag `default`
 - Falls back to using instance field values as declared default
 - Declare flag usage via struct tag `usage`
-- Easily combines with [jamiealquiza/envy](https://github.com/jamiealquiza/envy) for environment variable parsing and [google/subcommands](https://github.com/google/subcommands) for sub-command processing. Can also be integrated with [spf13/cobra](https://github.com/spf13/cobra) by using pflag's [AddGoFlagSet](https://godoc.org/github.com/spf13/pflag#FlagSet.AddGoFlagSet)
+- Can be combined with other modules, such as [google/subcommands](https://github.com/google/subcommands) for sub-command processing. Can also be integrated with [spf13/cobra](https://github.com/spf13/cobra) by using pflag's [AddGoFlagSet](https://godoc.org/github.com/spf13/pflag#FlagSet.AddGoFlagSet)
 - Beyond the standard types supported by flag.FlagSet also includes support for:
     - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma-separated list of values. For example: `--arg one --arg two,three`
     - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
+- Optionally set flag values from environment variables. Similar to flag names, environment variable names are derived automatically from the field names
 
 ## Quick example
 
@@ -116,3 +117,7 @@ type Config struct {
     // ...see https://github.com/itzg/saml-auth-proxy/blob/master/server/server.go for full set
 }
 ```
+
+## More information
+
+[Refer to the GoDocs](https://godoc.org/github.com/itzg/go-flagsfiller) for more information about this module.

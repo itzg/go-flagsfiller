@@ -131,5 +131,11 @@ The default tag's value is provided a comma-separate list of key=value entries, 
 
 	Mappings map[string]string `default:"k1=v1,k2=v2,k3=v3"`
 
+Environment variable mapping
+
+To activate the setting of flag values from environment variables, pass the WithEnv option to
+flagsfiller.New or flagsfiller.Parse. That option takes a prefix that will be prepended to the
+resolved field name and then the whole thing is converted to SCREAMING_SNAKE_CASE.
+
 */
 package flagsfiller
