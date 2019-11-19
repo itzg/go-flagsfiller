@@ -137,5 +137,34 @@ To activate the setting of flag values from environment variables, pass the With
 flagsfiller.New or flagsfiller.Parse. That option takes a prefix that will be prepended to the
 resolved field name and then the whole thing is converted to SCREAMING_SNAKE_CASE.
 
+The environment variable name will be automatically included in the flag usage along with the
+standard inclusion of the default value. For example, using the option WithEnv("App") along
+with the following field declaration
+
+	Host string `default:"localhost" usage:"the host to use"`
+
+would render the following usage:
+
+  -host string
+    	the host to use (env APP_HOST) (default "localhost")
+
+Per-field overrides
+
+To override the naming of a flag, the field can be declared with the tag `flag:"name"` where
+the given name will be used exactly as the flag name. An empty string for the name indicates
+the field should be ignored and no flag is declared. For example,
+
+	Host        string `flag:"server_address"
+	GetsIgnored string `flag:""`
+
+Environment variable naming and processing can be overridden with the `env:"name"` tag, where
+the given name will be used exactly as the mapped environment variable name. If the WithEnv
+or WithEnvRenamer options were enabled, a field can be excluded from environment variable
+mapping by giving an empty string. Conversely, environment variable mapping can be enabled
+per field with `env:"name"` even when the flagsfiller-wide option was not included. For example,
+
+	Host 			string `env:"SERVER_ADDRESS"`
+	NotEnvMapped 	string `env:""`
+
 */
 package flagsfiller

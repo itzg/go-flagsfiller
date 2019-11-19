@@ -47,10 +47,7 @@ func TestUsage(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -multi-word-name string
@@ -184,10 +181,7 @@ func TestNumbers(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -val-float-64 float
@@ -222,10 +216,7 @@ func TestDefaultsViaLiteral(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -enabled
@@ -252,10 +243,7 @@ func TestDefaultsViaTag(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -enabled
@@ -347,10 +335,7 @@ func TestStringSlice(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -instance-default value
@@ -383,10 +368,7 @@ func TestStringToStringMap(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -instance-default value
@@ -417,10 +399,7 @@ func TestUsagePlaceholders(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -some-url URL
@@ -467,10 +446,7 @@ func TestIgnoreNonExportedFields(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -host string
@@ -493,10 +469,7 @@ func TestIgnoreNonExportedStructFields(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -host string
@@ -521,10 +494,7 @@ func TestWithEnv(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
-	flagset.SetOutput(&buf)
-	flagset.PrintDefaults()
+	buf := grabUsage(flagset)
 
 	assert.Equal(t, `
   -host string
@@ -538,6 +508,79 @@ func TestWithEnv(t *testing.T) {
 
 	assert.Equal(t, "host from args", config.Host)
 	assert.Equal(t, "value from env", config.MultiWordName)
+}
+
+func TestWithEnvOverride(t *testing.T) {
+	type Config struct {
+		Host string `env:"SERVER_ADDRESS"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	buf := grabUsage(flagset)
+
+	assert.Equal(t, `
+  -host string
+    	 (env SERVER_ADDRESS)
+`, buf.String())
+}
+
+func TestWithEnvOverrideDisable(t *testing.T) {
+	type Config struct {
+		Host string `env:"" usage:"arg only"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	buf := grabUsage(flagset)
+
+	assert.Equal(t, `
+  -host string
+    	arg only
+`, buf.String())
+}
+
+func TestFlagNameOverride(t *testing.T) {
+	type Config struct {
+		Host        string `flag:"server_address" usage:"address of server"`
+		GetsIgnored string `flag:""`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+	buf := grabUsage(flagset)
+
+	assert.Equal(t, `
+  -server_address string
+    	address of server
+`, buf.String())
+
+}
+
+func grabUsage(flagset flag.FlagSet) *bytes.Buffer {
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'})
+	// start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+	return &buf
 }
 
 func ExampleWithEnv() {

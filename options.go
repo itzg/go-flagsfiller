@@ -26,8 +26,8 @@ func WithFieldRenamer(renamer Renamer) FillerOption {
 }
 
 // WithEnv activates pre-setting the flag values from environment variables.
-// Fields are mapped to environment variables names by prepending with the given prefix and
-// converting word-wise to SCREAMING_SNAKE_CASE.
+// Fields are mapped to environment variables names by prepending the given prefix and
+// converting word-wise to SCREAMING_SNAKE_CASE. The given prefix can be empty.
 func WithEnv(prefix string) FillerOption {
 	return WithEnvRenamer(
 		CompositeRenamer(PrefixRenamer(prefix), ScreamingSnakeRenamer()))
@@ -57,7 +57,7 @@ func newFillerOptions(options ...FillerOption) *fillerOptions {
 	return v
 }
 
-// PrefixRenamer prepends the given prefix to a given name
+// PrefixRenamer prepends the given prefix to a name
 func PrefixRenamer(prefix string) Renamer {
 	return func(name string) string {
 		return prefix + name

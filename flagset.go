@@ -98,14 +98,30 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{},
 	name string, t reflect.Type, tag reflect.StructTag) (err error) {
 
-	usage := requoteUsage(tag.Get("usage"))
 	var envName string
-	if f.options.envRenamer != nil {
+	if override, exists := tag.Lookup("env"); exists {
+		envName = override
+	} else if f.options.envRenamer != nil {
 		envName = f.options.envRenamer(name)
+	}
+
+	usage := requoteUsage(tag.Get("usage"))
+	if envName != "" {
 		usage = fmt.Sprintf("%s (env %s)", usage, envName)
 	}
+
 	tagDefault, hasDefaultTag := tag.Lookup("default")
-	renamed := f.options.renameLongName(name)
+
+	var renamed string
+	if override, exists := tag.Lookup("flag"); exists {
+		if override == "" {
+			// empty flag override signal to skip this field
+			return nil
+		}
+		renamed = override
+	} else {
+		renamed = f.options.renameLongName(name)
+	}
 
 	switch {
 	case t.Kind() == reflect.String:
