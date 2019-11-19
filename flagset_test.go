@@ -452,3 +452,53 @@ func TestParseError(t *testing.T) {
 	err := flagsfiller.Parse(&config)
 	assert.Error(t, err)
 }
+
+func TestIgnoreNonExportedFields(t *testing.T) {
+	type Config struct {
+		Host        string
+		hiddenField string
+	}
+
+	var config Config
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -host string
+    	
+`, buf.String())
+}
+
+func TestIgnoreNonExportedStructFields(t *testing.T) {
+	type Config struct {
+		Host   string
+		nested struct {
+			NotVisible string
+		}
+	}
+
+	var config Config
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	buf.Write([]byte{'\n'}) // start with newline to make expected string nicer below
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `
+  -host string
+    	
+`, buf.String())
+}
