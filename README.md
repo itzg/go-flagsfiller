@@ -118,6 +118,70 @@ type Config struct {
 }
 ```
 
+## Using with google/subcommands
+
+Flagsfiller can be used in combination with [google/subcommands](https://github.com/google/subcommands) to fill both global command-line flags and subcommand flags.
+
+For the global flags, it is best to declare a struct type, such as
+
+```go
+type GlobalConfig struct {
+	Debug bool `usage:"enable debug logging"`
+}
+```
+
+Prior to calling `Execute` on the subcommands' `Commander`, fill and parse the global flags like normal:
+
+```go
+func main() {
+    //... register subcommands here
+
+	var globalConfig GlobalConfig
+
+	err := flagsfiller.Parse(&globalConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+    //... execute subcommands but pass global config
+	os.Exit(int(subcommands.Execute(context.Background(), &globalConfig)))
+}
+```
+
+Each of your subcommand struct types should contain the flag fields to fill and parse, such as:
+
+```go
+type connectCmd struct {
+	Host string `usage:"the hostname of the server" env:"GITHUB_TOKEN"`
+	Port int `usage:"the port of the server" default:"8080"`
+}
+```
+
+Your implementation of `SetFlags` will use flagsfiller to fill the definition of the subcommand's flagset, such as:
+
+```go
+func (c *connectCmd) SetFlags(f *flag.FlagSet) {
+	filler := flagsfiller.New()
+	err := filler.Fill(f, c)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+Finally, your subcommand's `Execute` function can accept the global config passed from the main `Execute` call and access its own fields populated from the subcommand flags:
+
+```go
+func (c *loadFromGitCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+	globalConfig := args[0].(*GlobalConfig)
+    if globalConfig.Debug {
+        //... enable debug logs
+    }
+
+    // ...operate on subcommand flags, such as
+    conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port))
+}
+```
 ## More information
 
 [Refer to the GoDocs](https://godoc.org/github.com/itzg/go-flagsfiller) for more information about this module.
