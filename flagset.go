@@ -70,7 +70,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 			}
 
 		case reflect.Ptr:
-			if field.Type.Elem().Kind() == reflect.Struct {
+			if fieldValue.CanSet() && field.Type.Elem().Kind() == reflect.Struct {
 				// fill the pointer with a new struct of their type
 				fieldValue.Set(reflect.New(field.Type.Elem()))
 

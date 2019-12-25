@@ -99,6 +99,32 @@ func TestNestedFields(t *testing.T) {
 	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
 }
 
+func TestNestedUnexportedFields(t *testing.T) {
+	type Config struct {
+		Host        string
+		hiddenField struct {
+			SomeField    string
+			anotherField string
+		}
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `  -host string
+    	
+`, buf.String())
+}
+
 func TestNestedStructPtr(t *testing.T) {
 	type Nested struct {
 		SomeField string
@@ -121,6 +147,32 @@ func TestNestedStructPtr(t *testing.T) {
 
 	assert.Equal(t, "h1", config.Host)
 	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
+}
+
+func TestNestedUnexportedStructPtr(t *testing.T) {
+	type Nested struct {
+		SomeField string
+	}
+	type Config struct {
+		Host        string
+		hiddenField *Nested
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `  -host string
+    	
+`, buf.String())
 }
 
 func TestPtrField(t *testing.T) {
