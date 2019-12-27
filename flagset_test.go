@@ -422,13 +422,14 @@ func TestStringToStringMap(t *testing.T) {
 
 	buf := grabUsage(flagset)
 
-	assert.Equal(t, `
+	// using regexp assertion since -tag-default's map entries can be either order
+	assert.Regexp(t, `
   -instance-default value
-    	 (default fruit=orange)
+    	 \(default fruit=orange\)
   -no-default value
     	
   -tag-default value
-    	 (default fruit=apple,veggie=carrot)
+    	 \(default (veggie=carrot,fruit=apple|fruit=apple,veggie=carrot)\)
 `, buf.String())
 
 	err = flagset.Parse([]string{"--no-default", "k1=v1", "--no-default", "k2=v2,k3=v3"})
