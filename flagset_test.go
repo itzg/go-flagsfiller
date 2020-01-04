@@ -99,6 +99,45 @@ func TestNestedFields(t *testing.T) {
 	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
 }
 
+func TestNestedAdjacentFields(t *testing.T) {
+	type SomeGrouping struct {
+		SomeField  string
+		EvenDeeper struct {
+			Deepest string
+		}
+	}
+	type Config struct {
+		Host         string
+		SomeGrouping SomeGrouping
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{"--host", "h1", "--some-grouping-some-field", "val1"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "h1", config.Host)
+	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
+
+	var buf bytes.Buffer
+	flagset.SetOutput(&buf)
+	flagset.PrintDefaults()
+
+	assert.Equal(t, `  -host string
+    	
+  -some-grouping-even-deeper-deepest string
+    	
+  -some-grouping-some-field string
+    	
+`, buf.String())
+}
+
 func TestNestedUnexportedFields(t *testing.T) {
 	type Config struct {
 		Host        string

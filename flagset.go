@@ -64,7 +64,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		switch field.Type.Kind() {
 		case reflect.Struct:
-			err := f.walkFields(flagSet, field.Name, fieldValue, field.Type)
+			err := f.walkFields(flagSet, prefix+field.Name, fieldValue, field.Type)
 			if err != nil {
 				return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
 			}
