@@ -19,7 +19,7 @@ import "github.com/itzg/go-flagsfiller"
 
 ## Features
 
-- Populates Go's [flag.FagSet](https://golang.org/pkg/flag/#FlagSet) from a struct of your choosing
+- Populates Go's [flag.FlagSet](https://golang.org/pkg/flag/#FlagSet) from a struct of your choosing
 - By default, field names are converted to flag names using [kebab-case](https://en.wiktionary.org/wiki/kebab_case), but can be configured.
 - Use nested structs where flag name is prefixed by the nesting struct field names
 - Allows defaults to be given via struct tag `default`
