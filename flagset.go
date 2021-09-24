@@ -62,6 +62,10 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 		field := structType.Field(i)
 		fieldValue := structVal.Field(i)
 
+		if !fieldValue.CanSet() {
+			continue
+		}
+
 		switch field.Type.Kind() {
 		case reflect.Struct:
 			err := f.walkFields(flagSet, prefix+field.Name, fieldValue, field.Type)
