@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/iancoleman/strcase"
 	"github.com/itzg/go-flagsfiller"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestStringFields(t *testing.T) {
@@ -289,16 +290,25 @@ func TestNumbers(t *testing.T) {
 }
 
 func TestDefaultsViaLiteral(t *testing.T) {
+	type Nested struct {
+		Exported   string
+		unExported string
+	}
 	type Config struct {
 		Host    string
 		Enabled bool
 		Timeout time.Duration
+		Nested  *Nested
 	}
 
 	var config = Config{
 		Host:    "h1",
 		Enabled: true,
 		Timeout: 5 * time.Second,
+		Nested: &Nested{
+			Exported:   "exported",
+			unExported: "un-exported",
+		},
 	}
 
 	filler := flagsfiller.New()
@@ -309,11 +319,15 @@ func TestDefaultsViaLiteral(t *testing.T) {
 
 	buf := grabUsage(flagset)
 
+	assert.Equal(t, "un-exported", config.Nested.unExported)
+
 	assert.Equal(t, `
   -enabled
     	 (default true)
   -host string
     	 (default "h1")
+  -nested-exported string
+    	 (default "exported")
   -timeout duration
     	 (default 5s)
 `, buf.String())

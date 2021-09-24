@@ -71,8 +71,10 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		case reflect.Ptr:
 			if fieldValue.CanSet() && field.Type.Elem().Kind() == reflect.Struct {
-				// fill the pointer with a new struct of their type
-				fieldValue.Set(reflect.New(field.Type.Elem()))
+				// fill the pointer with a new struct of their type if it is nil
+				if fieldValue.IsNil() {
+					fieldValue.Set(reflect.New(field.Type.Elem()))
+				}
 
 				err := f.walkFields(flagSet, field.Name, fieldValue.Elem(), field.Type.Elem())
 				if err != nil {
@@ -101,8 +103,11 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	var envName string
 	if override, exists := tag.Lookup("env"); exists {
 		envName = override
-	} else if f.options.envRenamer != nil {
-		envName = f.options.envRenamer(name)
+	} else if len(f.options.envRenamer) > 0 {
+		envName = name
+		for _, renamer := range f.options.envRenamer {
+			envName = renamer(envName)
+		}
 	}
 
 	usage := requoteUsage(tag.Get("usage"))
