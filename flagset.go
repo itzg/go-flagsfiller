@@ -103,8 +103,11 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	var envName string
 	if override, exists := tag.Lookup("env"); exists {
 		envName = override
-	} else if f.options.envRenamer != nil {
-		envName = f.options.envRenamer(name)
+	} else if len(f.options.envRenamer) > 0 {
+		envName = name
+		for _, renamer := range f.options.envRenamer {
+			envName = renamer(envName)
+		}
 	}
 
 	usage := requoteUsage(tag.Get("usage"))

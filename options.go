@@ -13,15 +13,15 @@ var DefaultFieldRenamer = KebabRenamer()
 type FillerOption func(opt *fillerOptions)
 
 type fillerOptions struct {
-	fieldRenamer Renamer
-	envRenamer   Renamer
+	fieldRenamer []Renamer
+	envRenamer   []Renamer
 }
 
 // WithFieldRenamer declares an option to customize the Renamer used to convert field names
 // to flag names.
 func WithFieldRenamer(renamer Renamer) FillerOption {
 	return func(opt *fillerOptions) {
-		opt.fieldRenamer = renamer
+		opt.fieldRenamer = append(opt.fieldRenamer, renamer)
 	}
 }
 
@@ -37,15 +37,18 @@ func WithEnv(prefix string) FillerOption {
 // are mapped to environment variable names by applying the given Renamer
 func WithEnvRenamer(renamer Renamer) FillerOption {
 	return func(opt *fillerOptions) {
-		opt.envRenamer = renamer
+		opt.envRenamer = append(opt.envRenamer, renamer)
 	}
 }
 
 func (o *fillerOptions) renameLongName(name string) string {
-	if o.fieldRenamer == nil {
+	if len(o.fieldRenamer) == 0 {
 		return DefaultFieldRenamer(name)
 	} else {
-		return o.fieldRenamer(name)
+		for _, renamer := range o.fieldRenamer {
+			name = renamer(name)
+		}
+		return name
 	}
 }
 
