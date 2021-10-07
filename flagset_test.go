@@ -83,6 +83,9 @@ func TestNestedFields(t *testing.T) {
 		SomeGrouping struct {
 			SomeField string
 		}
+		ALLCAPS struct {
+			ALLCAPS string
+		}
 	}
 
 	var config Config
@@ -93,11 +96,12 @@ func TestNestedFields(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"--host", "h1", "--some-grouping-some-field", "val1"})
+	err = flagset.Parse([]string{"--host", "h1", "--some-grouping-some-field", "val1", "--allcaps-allcaps", "val2"})
 	require.NoError(t, err)
 
 	assert.Equal(t, "h1", config.Host)
 	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
+	assert.Equal(t, "val2", config.ALLCAPS.ALLCAPS)
 }
 
 func TestNestedAdjacentFields(t *testing.T) {
@@ -695,17 +699,17 @@ func ExampleWithEnv() {
 	}
 
 	// simulate env variables from program invocation
-	os.Setenv("MY_APP_MULTI_WORD_NAME", "from env")
+	_ = os.Setenv("MY_APP_MULTI_WORD_NAME", "from env")
 
 	var config Config
 
 	// enable environment variable processing with given prefix
 	filler := flagsfiller.New(flagsfiller.WithEnv("MyApp"))
 	var flagset flag.FlagSet
-	filler.Fill(&flagset, &config)
+	_ = filler.Fill(&flagset, &config)
 
 	// simulate no args passed in
-	flagset.Parse([]string{})
+	_ = flagset.Parse([]string{})
 
 	fmt.Println(config.MultiWordName)
 	// Output:
