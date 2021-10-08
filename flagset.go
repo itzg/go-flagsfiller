@@ -58,6 +58,9 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 	structVal reflect.Value, structType reflect.Type) error {
 
+	if prefix != "" {
+		prefix += "-"
+	}
 	for i := 0; i < structVal.NumField(); i++ {
 		field := structType.Field(i)
 		fieldValue := structVal.Field(i)
