@@ -158,7 +158,13 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		err = f.processUint(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
 
 	case t == stringSliceType:
-		f.processStringSlice(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
+		var override bool
+		if overrideValue, exists := tag.Lookup("override-value"); exists {
+			if value, err := strconv.ParseBool(overrideValue); err == nil {
+				override = value
+			}
+		}
+		f.processStringSlice(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, override)
 
 	case t == stringToStringMapType:
 		f.processStringToStringMap(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
@@ -198,12 +204,12 @@ func (f *FlagSetFiller) processStringToStringMap(fieldRef interface{}, hasDefaul
 	flagSet.Var(&strToStrMapVar{val: val}, renamed, usage)
 }
 
-func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) {
+func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, override bool) {
 	casted := fieldRef.(*[]string)
 	if hasDefaultTag {
 		*casted = parseStringSlice(tagDefault)
 	}
-	flagSet.Var(&strSliceVar{ref: casted}, renamed, usage)
+	flagSet.Var(&strSliceVar{ref: casted, override: override}, renamed, usage)
 }
 
 func (f *FlagSetFiller) processUint(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
@@ -325,7 +331,8 @@ func (f *FlagSetFiller) processString(fieldRef interface{}, hasDefaultTag bool, 
 }
 
 type strSliceVar struct {
-	ref *[]string
+	ref      *[]string
+	override bool
 }
 
 func (s *strSliceVar) String() string {
@@ -337,6 +344,12 @@ func (s *strSliceVar) String() string {
 
 func (s *strSliceVar) Set(val string) error {
 	parts := parseStringSlice(val)
+
+	if s.override {
+		*s.ref = parts
+		return nil
+	}
+
 	*s.ref = append(*s.ref, parts...)
 
 	return nil
