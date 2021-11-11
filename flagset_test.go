@@ -433,6 +433,7 @@ func TestStringSlice(t *testing.T) {
 		NoDefault       []string
 		InstanceDefault []string
 		TagDefault      []string `default:"one,two"`
+		TagOverride     []string `default:"one,two" override-value:"true"`
 	}
 
 	var config Config
@@ -453,12 +454,23 @@ func TestStringSlice(t *testing.T) {
     	
   -tag-default value
     	 (default one,two)
+  -tag-override value
+    	 (default one,two)
 `, buf.String())
 
-	err = flagset.Parse([]string{"--no-default", "nd1", "--no-default", "nd2", "--no-default", "nd3,nd4"})
+	err = flagset.Parse([]string{
+		"--no-default", "nd1",
+		"--no-default", "nd2",
+		"--no-default", "nd3,nd4",
+		"--tag-default", "three",
+		"--tag-override", "three",
+	})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"nd1", "nd2", "nd3", "nd4"}, config.NoDefault)
+	assert.Equal(t, []string{"apple", "orange"}, config.InstanceDefault)
+	assert.Equal(t, []string{"one", "two", "three"}, config.TagDefault)
+	assert.Equal(t, []string{"three"}, config.TagOverride)
 }
 
 func TestStringToStringMap(t *testing.T) {
