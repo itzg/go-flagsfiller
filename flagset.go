@@ -120,6 +120,8 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 
 	tagDefault, hasDefaultTag := tag.Lookup("default")
 
+	fieldType, _ := tag.Lookup("type")
+
 	var renamed string
 	if override, exists := tag.Lookup("flag"); exists {
 		if override == "" {
@@ -142,7 +144,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		err = f.processFloat64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
 
 	// NOTE check time.Duration before int64 since it is aliased from int64
-	case t == durationType:
+	case t == durationType, fieldType == "duration":
 		err = f.processDuration(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
 
 	case t.Kind() == reflect.Int64:
@@ -157,7 +159,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	case t.Kind() == reflect.Uint:
 		err = f.processUint(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
 
-	case t == stringSliceType:
+	case t == stringSliceType, fieldType == "stringSlice":
 		var override bool
 		if overrideValue, exists := tag.Lookup("override-value"); exists {
 			if value, err := strconv.ParseBool(overrideValue); err == nil {
@@ -166,7 +168,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		}
 		f.processStringSlice(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, override)
 
-	case t == stringToStringMapType:
+	case t == stringToStringMapType, fieldType == "stringMap":
 		f.processStringToStringMap(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage)
 
 		// ignore any other types
@@ -190,7 +192,21 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 }
 
 func (f *FlagSetFiller) processStringToStringMap(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) {
-	casted := fieldRef.(*map[string]string)
+	casted, ok := fieldRef.(*map[string]string)
+	if !ok {
+		_ = f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				return parseStringToStringMap(s), nil
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+		return
+	}
 	var val map[string]string
 	if hasDefaultTag {
 		val = parseStringToStringMap(tagDefault)
@@ -205,7 +221,21 @@ func (f *FlagSetFiller) processStringToStringMap(fieldRef interface{}, hasDefaul
 }
 
 func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, override bool) {
-	casted := fieldRef.(*[]string)
+	casted, ok := fieldRef.(*[]string)
+	if !ok {
+		_ = f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				return parseStringSlice(s), nil
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+		return
+	}
 	if hasDefaultTag {
 		*casted = parseStringSlice(tagDefault)
 	}
@@ -213,7 +243,21 @@ func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag b
 }
 
 func (f *FlagSetFiller) processUint(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*uint)
+	casted, ok := fieldRef.(*uint)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.Atoi(s)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal uint
 	if hasDefaultTag {
 		var asInt int
@@ -230,7 +274,21 @@ func (f *FlagSetFiller) processUint(fieldRef interface{}, hasDefaultTag bool, ta
 }
 
 func (f *FlagSetFiller) processUint64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*uint64)
+	casted, ok := fieldRef.(*uint64)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.ParseUint(s, 10, 64)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal uint64
 	if hasDefaultTag {
 		defaultVal, err = strconv.ParseUint(tagDefault, 10, 64)
@@ -245,7 +303,21 @@ func (f *FlagSetFiller) processUint64(fieldRef interface{}, hasDefaultTag bool, 
 }
 
 func (f *FlagSetFiller) processInt(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*int)
+	casted, ok := fieldRef.(*int)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.Atoi(s)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal int
 	if hasDefaultTag {
 		defaultVal, err = strconv.Atoi(tagDefault)
@@ -260,7 +332,21 @@ func (f *FlagSetFiller) processInt(fieldRef interface{}, hasDefaultTag bool, tag
 }
 
 func (f *FlagSetFiller) processInt64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*int64)
+	casted, ok := fieldRef.(*int64)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.ParseInt(s, 10, 64)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal int64
 	if hasDefaultTag {
 		defaultVal, err = strconv.ParseInt(tagDefault, 10, 64)
@@ -275,7 +361,21 @@ func (f *FlagSetFiller) processInt64(fieldRef interface{}, hasDefaultTag bool, t
 }
 
 func (f *FlagSetFiller) processDuration(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*time.Duration)
+	casted, ok := fieldRef.(*time.Duration)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := time.ParseDuration(s)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal time.Duration
 	if hasDefaultTag {
 		defaultVal, err = time.ParseDuration(tagDefault)
@@ -290,7 +390,21 @@ func (f *FlagSetFiller) processDuration(fieldRef interface{}, hasDefaultTag bool
 }
 
 func (f *FlagSetFiller) processFloat64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*float64)
+	casted, ok := fieldRef.(*float64)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.ParseFloat(s, 64)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal float64
 	if hasDefaultTag {
 		defaultVal, err = strconv.ParseFloat(tagDefault, 64)
@@ -305,7 +419,21 @@ func (f *FlagSetFiller) processFloat64(fieldRef interface{}, hasDefaultTag bool,
 }
 
 func (f *FlagSetFiller) processBool(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) (err error) {
-	casted := fieldRef.(*bool)
+	casted, ok := fieldRef.(*bool)
+	if !ok {
+		return f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				value, err := strconv.ParseBool(s)
+				return value, err
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+	}
 	var defaultVal bool
 	if hasDefaultTag {
 		defaultVal, err = strconv.ParseBool(tagDefault)
@@ -320,7 +448,21 @@ func (f *FlagSetFiller) processBool(fieldRef interface{}, hasDefaultTag bool, ta
 }
 
 func (f *FlagSetFiller) processString(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) {
-	casted := fieldRef.(*string)
+	casted, ok := fieldRef.(*string)
+	if !ok {
+		_ = f.processCustom(
+			fieldRef,
+			func(s string) (interface{}, error) {
+				return s, nil
+			},
+			hasDefaultTag,
+			tagDefault,
+			flagSet,
+			renamed,
+			usage,
+		)
+		return
+	}
 	var defaultVal string
 	if hasDefaultTag {
 		defaultVal = tagDefault
@@ -328,6 +470,25 @@ func (f *FlagSetFiller) processString(fieldRef interface{}, hasDefaultTag bool, 
 		defaultVal = *casted
 	}
 	flagSet.StringVar(casted, renamed, defaultVal, usage)
+}
+
+func (f *FlagSetFiller) processCustom(fieldRef interface{}, converter func(string) (interface{}, error), hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string) error {
+	if hasDefaultTag {
+		value, err := converter(tagDefault)
+		if err != nil {
+			return fmt.Errorf("failed to parse default into custom type: %w", err)
+		}
+		reflect.ValueOf(fieldRef).Elem().Set(reflect.ValueOf(value).Convert(reflect.TypeOf(fieldRef).Elem()))
+	}
+	flagSet.Func(renamed, usage, func(s string) error {
+		value, err := converter(s)
+		if err != nil {
+			return err
+		}
+		reflect.ValueOf(fieldRef).Elem().Set(reflect.ValueOf(value).Convert(reflect.TypeOf(fieldRef).Elem()))
+		return nil
+	})
+	return nil
 }
 
 type strSliceVar struct {

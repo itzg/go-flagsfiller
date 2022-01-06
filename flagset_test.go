@@ -35,6 +35,104 @@ func TestStringFields(t *testing.T) {
 	assert.Equal(t, "val1", config.MultiWordName)
 }
 
+func TestCustomFields(t *testing.T) {
+	type CustomStringType string
+	type CustomBoolType bool
+	type CustomFloat64 float64
+	type CustomDuration time.Duration
+	type CustomInt64 int64
+	type CustomInt int
+	type CustomUint64 uint64
+	type CustomUint uint
+	type CustomStringSlice []string
+	type CustomStringMap map[string]string
+
+	t.Run("Default values", func(t *testing.T) {
+		type Config struct {
+			String      CustomStringType  `default:"stringValue"`
+			Bool        CustomBoolType    `default:"true"`
+			Float64     CustomFloat64     `default:"1.234"`
+			Duration    CustomDuration    `type:"duration" default:"2s"`
+			Int64       CustomInt64       `default:"-1"`
+			Int         CustomInt         `default:"-2"`
+			Uint64      CustomUint64      `default:"1"`
+			Uint        CustomUint        `default:"2"`
+			StringSlice CustomStringSlice `type:"stringSlice" default:"one,two"`
+			StringMap   CustomStringMap   `type:"stringMap" default:"one=value1,two=value2"`
+		}
+
+		var config Config
+
+		filler := flagsfiller.New()
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+
+		err = flagset.Parse([]string{})
+		require.NoError(t, err)
+
+		assert.Equal(t, CustomStringType("stringValue"), config.String)
+		assert.Equal(t, CustomBoolType(true), config.Bool)
+		assert.Equal(t, CustomFloat64(1.234), config.Float64)
+		assert.Equal(t, CustomDuration(2*time.Second), config.Duration)
+		assert.Equal(t, CustomInt64(-1), config.Int64)
+		assert.Equal(t, CustomInt(-2), config.Int)
+		assert.Equal(t, CustomUint64(1), config.Uint64)
+		assert.Equal(t, CustomUint(2), config.Uint)
+		assert.Equal(t, CustomStringSlice{"one", "two"}, config.StringSlice)
+		assert.Equal(t, CustomStringMap{"one": "value1", "two": "value2"}, config.StringMap)
+	})
+
+	t.Run("Values set from arguments", func(t *testing.T) {
+		type Config struct {
+			String      CustomStringType
+			Bool        CustomBoolType
+			Float64     CustomFloat64
+			Duration    CustomDuration `type:"duration"`
+			Int64       CustomInt64
+			Int         CustomInt
+			Uint64      CustomUint64
+			Uint        CustomUint
+			StringSlice CustomStringSlice `type:"stringSlice"`
+			StringMap   CustomStringMap   `type:"stringMap"`
+		}
+
+		var config Config
+
+		filler := flagsfiller.New()
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+
+		err = flagset.Parse([]string{
+			"--string", "stringValue",
+			"--bool", "true",
+			"--float-64", "1.234",
+			"--duration", "2s",
+			"--int-64", "-1",
+			"--int", "-2",
+			"--uint-64", "1",
+			"--uint", "2",
+			"--string-slice", "one,two",
+			"--string-map", "one=value1,two=value2",
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, CustomStringType("stringValue"), config.String)
+		assert.Equal(t, CustomBoolType(true), config.Bool)
+		assert.Equal(t, CustomFloat64(1.234), config.Float64)
+		assert.Equal(t, CustomDuration(2*time.Second), config.Duration)
+		assert.Equal(t, CustomInt64(-1), config.Int64)
+		assert.Equal(t, CustomInt(-2), config.Int)
+		assert.Equal(t, CustomUint64(1), config.Uint64)
+		assert.Equal(t, CustomUint(2), config.Uint)
+		assert.Equal(t, CustomStringSlice{"one", "two"}, config.StringSlice)
+		assert.Equal(t, CustomStringMap{"one": "value1", "two": "value2"}, config.StringMap)
+	})
+}
+
 func TestUsage(t *testing.T) {
 	type Config struct {
 		MultiWordName string `usage:"usage goes here"`
