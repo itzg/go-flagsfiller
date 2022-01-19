@@ -772,6 +772,34 @@ func TestWithEnvOverrideDisable(t *testing.T) {
 `, buf.String())
 }
 
+func TestNoSetFromEnv(t *testing.T) {
+	type Config struct {
+		Host string `usage:"arg only"`
+	}
+
+	var config Config
+
+	assert.NoError(t, os.Setenv("APP_HOST", "host from env"))
+
+	filler := flagsfiller.New(
+		flagsfiller.WithEnv("App"),
+		flagsfiller.NoSetFromEnv(),
+	)
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	buf := grabUsage(flagset)
+
+	assert.Empty(t, config.Host)
+
+	assert.Equal(t, `
+  -host string
+    	arg only (env APP_HOST)
+`, buf.String())
+}
+
 func TestFlagNameOverride(t *testing.T) {
 	type Config struct {
 		Host        string `flag:"server_address" usage:"address of server"`

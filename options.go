@@ -15,6 +15,7 @@ type FillerOption func(opt *fillerOptions)
 type fillerOptions struct {
 	fieldRenamer []Renamer
 	envRenamer   []Renamer
+	noSetFromEnv bool
 }
 
 // WithFieldRenamer declares an option to customize the Renamer used to convert field names
@@ -38,6 +39,15 @@ func WithEnv(prefix string) FillerOption {
 func WithEnvRenamer(renamer Renamer) FillerOption {
 	return func(opt *fillerOptions) {
 		opt.envRenamer = append(opt.envRenamer, renamer)
+	}
+}
+
+// NoSetFromEnv ignores setting values from the environment.
+// All environment variable renamers are run but values are not set from the environment.
+// This is good to use if you need to build a flag set with default values that don't consider the current environment.
+func NoSetFromEnv() FillerOption {
+	return func(opt *fillerOptions) {
+		opt.noSetFromEnv = true
 	}
 }
 
