@@ -178,7 +178,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		return err
 	}
 
-	if envName != "" {
+	if !f.options.noSetFromEnv && envName != "" {
 		if val, exists := os.LookupEnv(envName); exists {
 			err := flagSet.Lookup(renamed).Value.Set(val)
 			if err != nil {
