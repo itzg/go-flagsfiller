@@ -46,6 +46,20 @@ to kebab-case. For example the field named "MyMultiWordField" becomes the flag n
 The naming strategy can be changed by passing a custom Renamer using the WithFieldRenamer
 option in the constructor.
 
+Alternatively, its possible to define aliases for your flags. Instead of giving it the full name
+you can use the `aliases` directive
+
+	type Config struct {
+		Timeout time.Duration `default:"1m" aliases:"t"`
+	}
+
+Using it like this you'll can define a custom shorter name. Also possible to separate by commas to
+add more than one alias:
+
+	type Config struct {
+		Timeout time.Duration `default:"1m" aliases:"t,tm,duration"`
+	}
+
 Nested Structs
 
 FlagSetFiller supports nested structs and computes the flag names by prefixing the field
