@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+func init() {
+	supportedStructList["net.IPNet"] = struct{}{}
+}
+
 type ipValue struct {
 	addr *net.IP
 }
@@ -116,8 +120,4 @@ func (f *FlagSetFiller) processIPNet(fieldRef interface{}, hasDefaultTag bool, t
 		}
 	}
 	return nil
-}
-
-func init() {
-	supportedStructList["net.IPNet"] = struct{}{}
 }

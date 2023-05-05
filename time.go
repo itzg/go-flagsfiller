@@ -7,11 +7,17 @@ import (
 	"time"
 )
 
-// layout string to parse time, following golang time.Parse() format, change this var to the layout needed
-var TimeLayout = "2006-01-02 15:04:05"
+func init() {
+	supportedStructList["time.Time"] = struct{}{}
+}
+
+// DefaultTimeLayout is the default layout string to parse time, following golang time.Parse() format,
+// could be overriden by struct field tag "layout"
+var DefaultTimeLayout = time.DateTime
 
 type timeValue struct {
-	t *time.Time
+	t      *time.Time
+	layout string
 }
 
 func (v *timeValue) String() string {
@@ -23,17 +29,23 @@ func (v *timeValue) String() string {
 
 func (v *timeValue) Set(s string) error {
 	var err error
-	*v.t, err = time.Parse(TimeLayout, s)
+	*v.t, err = time.Parse(v.layout, s)
 	return err
 }
 
-func (f *FlagSetFiller) processTime(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processTime(fieldRef interface{},
+	hasDefaultTag bool, tagDefault string,
+	flagSet *flag.FlagSet, renamed string,
+	usage string, aliases string, layout string) (err error) {
+	if layout == "" {
+		layout = DefaultTimeLayout
+	}
 	casted, ok := fieldRef.(*time.Time)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
 			func(s string) (interface{}, error) {
-				return time.Parse(TimeLayout, s)
+				return time.Parse(layout, s)
 			},
 			hasDefaultTag,
 			tagDefault,
@@ -45,20 +57,17 @@ func (f *FlagSetFiller) processTime(fieldRef interface{}, hasDefaultTag bool, ta
 	}
 
 	if hasDefaultTag {
-		*casted, err = time.Parse(TimeLayout, tagDefault)
+		*casted, err = time.Parse(layout, tagDefault)
 		if err != nil {
 			return fmt.Errorf("failed to parse default into MAC(net.HardwareAddr): %w", err)
 		}
 	}
-	flagSet.Var(&timeValue{casted}, renamed, usage)
+	val := &timeValue{t: casted, layout: layout}
+	flagSet.Var(val, renamed, usage)
 	if aliases != "" {
 		for _, alias := range strings.Split(aliases, ",") {
-			flagSet.Var(&timeValue{casted}, alias, usage)
+			flagSet.Var(val, alias, usage)
 		}
 	}
 	return nil
-}
-
-func init() {
-	supportedStructList["time.Time"] = struct{}{}
 }

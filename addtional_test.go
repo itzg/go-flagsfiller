@@ -13,7 +13,7 @@ import (
 
 func TestTime(t *testing.T) {
 	type Config struct {
-		T time.Time
+		T time.Time `layout:"2006-Jan-02==15:04:05"`
 	}
 
 	var config Config
@@ -24,9 +24,9 @@ func TestTime(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"-t", "2001-03-02 13:04:21"})
+	err = flagset.Parse([]string{"-t", "2016-Dec-13==16:03:02"})
 	require.NoError(t, err)
-	expeted, _ := time.Parse(time.DateTime, "2001-03-02 13:04:21")
+	expeted, _ := time.Parse(time.DateTime, "2016-12-13 16:03:02")
 	assert.Equal(t, expeted, config.T)
 }
 
