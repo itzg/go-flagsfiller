@@ -24,7 +24,7 @@ func TestTime(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"-t", "2001-03-02_13:04:21"})
+	err = flagset.Parse([]string{"-t", "2001-03-02 13:04:21"})
 	require.NoError(t, err)
 	expeted, _ := time.Parse(time.DateTime, "2001-03-02 13:04:21")
 	assert.Equal(t, expeted, config.T)
