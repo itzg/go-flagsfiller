@@ -8,7 +8,7 @@ import (
 )
 
 // layout string to parse time, following golang time.Parse() format, change this var to the layout needed
-var TimeLayout = "2006-01-02_15:04:05"
+var TimeLayout = "2006-01-02 15:04:05"
 
 type timeValue struct {
 	t *time.Time
