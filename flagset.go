@@ -55,11 +55,40 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	}
 }
 
+// this is a list of supported struct, like time.Time, that walkFields() won't walk into,
+// the key is the is string returned by the getTypeName(<struct_type>),
+// each supported struct need to be added in this map in init()
+var supportedStructList = make(map[string]struct{})
+
+func isSupportedStruct(name string) bool {
+	_, ok := supportedStructList[name]
+	return ok
+}
+
+func getTypeName(t reflect.Type) string {
+	return t.PkgPath() + "." + t.Name()
+}
+
 func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 	structVal reflect.Value, structType reflect.Type) error {
 
 	if prefix != "" {
 		prefix += "-"
+	}
+	handleDefault := func(field reflect.StructField, fieldValue reflect.Value) error {
+		addr := fieldValue.Addr()
+		// make sure it is exported/public
+		ftype := field.Type
+		if field.Type.Kind() == reflect.Ptr {
+			ftype = field.Type.Elem()
+		}
+		if addr.CanInterface() {
+			err := f.processField(flagSet, addr.Interface(), prefix+field.Name, ftype, field.Tag)
+			if err != nil {
+				return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
+			}
+		}
+		return nil
 	}
 	for i := 0; i < structVal.NumField(); i++ {
 		field := structType.Field(i)
@@ -73,6 +102,14 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		switch field.Type.Kind() {
 		case reflect.Struct:
+			fieldTypeName := getTypeName(field.Type)
+			if isSupportedStruct(fieldTypeName) {
+				err := handleDefault(field, fieldValue)
+				if err != nil {
+					return err
+				}
+				continue
+			}
 			err := f.walkFields(flagSet, prefix+field.Name, fieldValue, field.Type)
 			if err != nil {
 				return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
@@ -80,9 +117,17 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		case reflect.Ptr:
 			if fieldValue.CanSet() && field.Type.Elem().Kind() == reflect.Struct {
+				fieldTypeName := getTypeName(field.Type.Elem())
 				// fill the pointer with a new struct of their type if it is nil
 				if fieldValue.IsNil() {
 					fieldValue.Set(reflect.New(field.Type.Elem()))
+				}
+				if isSupportedStruct(fieldTypeName) {
+					err := handleDefault(field, fieldValue.Elem())
+					if err != nil {
+						return err
+					}
+					continue
 				}
 
 				err := f.walkFields(flagSet, field.Name, fieldValue.Elem(), field.Type.Elem())
@@ -92,13 +137,9 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 			}
 
 		default:
-			addr := fieldValue.Addr()
-			// make sure it is exported/public
-			if addr.CanInterface() {
-				err := f.processField(flagSet, addr.Interface(), prefix+field.Name, field.Type, field.Tag)
-				if err != nil {
-					return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
-				}
+			err := handleDefault(field, fieldValue)
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -139,8 +180,21 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	} else {
 		renamed = f.options.renameLongName(name)
 	}
-
+	typeName := getTypeName(t)
 	switch {
+	//check the typeName
+	case typeName == "net.IP":
+		f.processIP(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+	case typeName == "net.IPNet":
+		f.processIPNet(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+	case typeName == "net.HardwareAddr":
+		f.processMAC(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+
+	case typeName == "time.Time":
+		layoutStr, _ := tag.Lookup("layout")
+		f.processTime(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases, layoutStr)
+	//end of check typeName
+
 	case t.Kind() == reflect.String:
 		f.processString(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
