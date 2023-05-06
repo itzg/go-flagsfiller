@@ -2,7 +2,7 @@
 Package flagsfiller makes Go's flag package pleasant to use by mapping the fields of a given struct
 into flags in a FlagSet.
 
-Quick Start
+# Quick Start
 
 A FlagSetFiller is created with the New constructor, passing it any desired FillerOptions.
 With that, call Fill, passing it a flag.FlatSet, such as flag.CommandLine, and your struct to
@@ -37,7 +37,7 @@ as the snippet above in one call:
 
 	flagsfiller.Parse(&config)
 
-Flag Naming
+# Flag Naming
 
 By default, the flags are named by taking the field name and performing a word-wise conversion
 to kebab-case. For example the field named "MyMultiWordField" becomes the flag named
@@ -52,7 +52,8 @@ Additional aliases, such as short names, can be declared with the `aliases` tag 
 		Timeout time.Duration `aliases:"t"`
 		Limit   int `aliases:"l,lim"`
 	}
-Nested Structs
+
+# Nested Structs
 
 FlagSetFiller supports nested structs and computes the flag names by prefixing the field
 name of the struct to the names of the fields it contains. For example, the following maps to
@@ -68,7 +69,7 @@ the flags named remote-host, remote-auth-username, and remote-auth-password:
 		}
 	}
 
-Flag Usage
+# Flag Usage
 
 To declare a flag's usage add a `usage:""` tag to the field, such as:
 
@@ -87,7 +88,7 @@ results in the rendered output:
 	-some-url URL
 		a URL to configure
 
-Defaults
+# Defaults
 
 To declare the default value of a flag, you can either set a field's value before passing the
 struct to process, such as:
@@ -105,7 +106,7 @@ converted into the field's type. For example,
 		Timeout time.Duration `default:"1m"`
 	}
 
-String Slices
+# String Slices
 
 FlagSetFiller also includes support for []string fields.
 Repetition of the argument appends to the slice and/or an argument value can contain a
@@ -121,7 +122,7 @@ The default tag's value is provided as a comma-separated list, such as
 
 	MultiValues []string `default:"one,two,three"`
 
-Maps of String to String
+# Maps of String to String
 
 FlagSetFiller also includes support for map[string]string fields.
 Each argument entry is a key=value and/or repetition of the arguments adds to the map or
@@ -137,7 +138,16 @@ The default tag's value is provided a comma-separate list of key=value entries, 
 
 	Mappings map[string]string `default:"k1=v1,k2=v2,k3=v3"`
 
-Environment variable mapping
+# Other supported types
+
+FlagSetFiller also supports following field types:
+
+- net.IP: format used by net.ParseIP()
+- net.IPNet: format used by net.ParseCIDR()
+- net.HardwareAddr (MAC addr): format used by net.ParseMAC()
+- time.Time: format is the layout string used by time.Parse(), default layout is time.DateTime, could be overriden by field tag "layout"
+
+# Environment variable mapping
 
 To activate the setting of flag values from environment variables, pass the WithEnv option to
 flagsfiller.New or flagsfiller.Parse. That option takes a prefix that will be prepended to the
@@ -151,10 +161,10 @@ with the following field declaration
 
 would render the following usage:
 
-  -host string
-    	the host to use (env APP_HOST) (default "localhost")
+	-host string
+	  	the host to use (env APP_HOST) (default "localhost")
 
-Per-field overrides
+# Per-field overrides
 
 To override the naming of a flag, the field can be declared with the tag `flag:"name"` where
 the given name will be used exactly as the flag name. An empty string for the name indicates
@@ -171,6 +181,5 @@ per field with `env:"name"` even when the flagsfiller-wide option was not includ
 
 	Host 			string `env:"SERVER_ADDRESS"`
 	NotEnvMapped 	string `env:""`
-
 */
 package flagsfiller

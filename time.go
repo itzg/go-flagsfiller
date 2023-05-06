@@ -30,7 +30,10 @@ func (v *timeValue) String() string {
 func (v *timeValue) Set(s string) error {
 	var err error
 	*v.t, err = time.Parse(v.layout, s)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to parse %s into time.Time, expect layout is %s", s, v.layout)
+	}
+	return nil
 }
 
 func (f *FlagSetFiller) processTime(fieldRef interface{},
