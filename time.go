@@ -12,8 +12,9 @@ func init() {
 }
 
 // DefaultTimeLayout is the default layout string to parse time, following golang time.Parse() format,
-// could be overriden by struct field tag "layout"
-var DefaultTimeLayout = time.DateTime
+// can be overridden per field by field tag "layout". Default value is "2006-01-02 15:04:05", which is
+// the same as time.DateTime in Go 1.20
+var DefaultTimeLayout = "2006-01-02 15:04:05"
 
 type timeValue struct {
 	t      *time.Time
