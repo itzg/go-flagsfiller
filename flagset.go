@@ -55,13 +55,8 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	}
 }
 
-// this is a list of supported struct, like time.Time, that walkFields() won't walk into,
-// the key is the is string returned by the getTypeName(<struct_type>),
-// each supported struct need to be added in this map in init()
-var supportedStructList = make(map[string]struct{})
-
 func isSupportedStruct(name string) bool {
-	_, ok := supportedStructList[name]
+	_, ok := extendedTypes[name]
 	return ok
 }
 
@@ -181,20 +176,13 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		renamed = f.options.renameLongName(name)
 	}
 	typeName := getTypeName(t)
+
+	// go through all supported structs
+	if handler, ok := extendedTypes[typeName]; ok {
+		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+	}
+
 	switch {
-	//check the typeName
-	case typeName == "net.IP":
-		f.processIP(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-	case typeName == "net.IPNet":
-		f.processIPNet(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-	case typeName == "net.HardwareAddr":
-		f.processMAC(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-
-	case typeName == "time.Time":
-		layoutStr, _ := tag.Lookup("layout")
-		f.processTime(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases, layoutStr)
-	//end of check typeName
-
 	case t.Kind() == reflect.String:
 		f.processString(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
