@@ -7,13 +7,19 @@ The code in this file could be opened up in future if more complex implementatio
 import (
 	"flag"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
-// this is a list of supported struct, like time.Time, that walkFields() won't walk into,
-// the key is the is string returned by the getTypeName(<struct_type>),
-// each supported struct need to be added in this map in init()
-var supportedStructList = make(map[string]handlerFunc)
+// this is a list of addtional supported types(include struct), like time.Time, that walkFields() won't walk into,
+// the key is the is string returned by the getTypeName(<type>),
+// each supported type need to be added in this map in init()
+var extendedTypes = make(map[string]handlerFunc)
+
+type handlerFunc func(tag reflect.StructTag, fieldRef interface{},
+	hasDefaultTag bool, tagDefault string,
+	flagSet *flag.FlagSet, renamed string,
+	usage string, aliases string) error
 
 type flagVal[T any] interface {
 	flag.Value

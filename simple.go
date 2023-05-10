@@ -11,7 +11,7 @@ import (
 // see time.go and net.go for implementation examples
 func RegisterSimpleType[T any](c ConvertFunc[T]) {
 	base := simpleType[T]{converter: c}
-	supportedStructList[getTypeName(reflect.TypeOf(*new(T)))] = base.Process
+	extendedTypes[getTypeName(reflect.TypeOf(*new(T)))] = base.Process
 }
 
 // ConvertFunc is a function convert string s into a specific type T, the tag is the struct field tag, as addtional input.
@@ -51,11 +51,6 @@ func (v *simpleType[T]) Set(s string) error {
 func (v *simpleType[T]) SetRef(t *T) {
 	v.val = t
 }
-
-type handlerFunc func(tag reflect.StructTag, fieldRef interface{},
-	hasDefaultTag bool, tagDefault string,
-	flagSet *flag.FlagSet, renamed string,
-	usage string, aliases string) error
 
 func (v *simpleType[T]) Process(tag reflect.StructTag, fieldRef interface{},
 	hasDefaultTag bool, tagDefault string,

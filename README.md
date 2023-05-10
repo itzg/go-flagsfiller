@@ -29,7 +29,12 @@ import "github.com/itzg/go-flagsfiller"
 - Beyond the standard types supported by flag.FlagSet also includes support for:
     - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma-separated list of values. For example: `--arg one --arg two,three`
     - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
+	- `time.Time` parse via time.Parse(), with tag `layout` specify the layout string, default is "2006-01-02 15:04:05"
+	- `net.IP` parse via net.ParseIP()
+	- `net.IPNet` parse via net.ParseCIDR()
+	- `net.HardwareAddr` parse via net.ParseMAC()
 - Optionally set flag values from environment variables. Similar to flag names, environment variable names are derived automatically from the field names
+- New types could be supported via user code, via `RegisterSimpleType(ConvertFunc)`, check [time.go](time.go) and [net.go](net.go) to see how it works
 
 ## Quick example
 

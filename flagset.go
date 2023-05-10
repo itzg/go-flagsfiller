@@ -56,7 +56,7 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 }
 
 func isSupportedStruct(name string) bool {
-	_, ok := supportedStructList[name]
+	_, ok := extendedTypes[name]
 	return ok
 }
 
@@ -178,7 +178,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	typeName := getTypeName(t)
 
 	// go through all supported structs
-	if handler, ok := supportedStructList[typeName]; ok {
+	if handler, ok := extendedTypes[typeName]; ok {
 		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 	}
 
