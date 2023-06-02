@@ -1,6 +1,7 @@
 package flagsfiller
 
 import (
+	"encoding"
 	"flag"
 	"fmt"
 	"os"
@@ -55,13 +56,28 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	}
 }
 
-func isSupportedStruct(name string) bool {
-	_, ok := extendedTypes[name]
-	return ok
+func isSupportedStruct(in any) bool {
+	t := reflect.TypeOf(in)
+	_, ok := extendedTypes[getTypeName(t)]
+	if ok {
+		return true
+	}
+	if t.Kind() != reflect.Pointer {
+		val := reflect.ValueOf(in)
+		t = val.Addr().Type()
+	}
+	if t.Implements(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()) {
+		RegisterTextUnmarshaler(in)
+		return true
+	}
+	return false
 }
 
 func getTypeName(t reflect.Type) string {
-	return t.PkgPath() + "." + t.Name()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return fmt.Sprint(t)
 }
 
 func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
@@ -97,13 +113,15 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		switch field.Type.Kind() {
 		case reflect.Struct:
-			fieldTypeName := getTypeName(field.Type)
-			if isSupportedStruct(fieldTypeName) {
-				err := handleDefault(field, fieldValue)
-				if err != nil {
-					return err
+			// fieldTypeName := getTypeName(field.Type)
+			if field.IsExported() {
+				if isSupportedStruct(fieldValue.Addr().Interface()) {
+					err := handleDefault(field, fieldValue)
+					if err != nil {
+						return err
+					}
+					continue
 				}
-				continue
 			}
 			err := f.walkFields(flagSet, prefix+field.Name, fieldValue, field.Type)
 			if err != nil {
@@ -112,17 +130,19 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		case reflect.Ptr:
 			if fieldValue.CanSet() && field.Type.Elem().Kind() == reflect.Struct {
-				fieldTypeName := getTypeName(field.Type.Elem())
+				// fieldTypeName := getTypeName(field.Type.Elem())
 				// fill the pointer with a new struct of their type if it is nil
 				if fieldValue.IsNil() {
 					fieldValue.Set(reflect.New(field.Type.Elem()))
 				}
-				if isSupportedStruct(fieldTypeName) {
-					err := handleDefault(field, fieldValue.Elem())
-					if err != nil {
-						return err
+				if field.IsExported() {
+					if isSupportedStruct(fieldValue.Interface()) {
+						err := handleDefault(field, fieldValue.Elem())
+						if err != nil {
+							return err
+						}
+						continue
 					}
-					continue
 				}
 
 				err := f.walkFields(flagSet, field.Name, fieldValue.Elem(), field.Type.Elem())
@@ -175,11 +195,11 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	} else {
 		renamed = f.options.renameLongName(name)
 	}
-	typeName := getTypeName(t)
-
 	// go through all supported structs
-	if handler, ok := extendedTypes[typeName]; ok {
+	if isSupportedStruct(fieldRef) {
+		handler := extendedTypes[getTypeName(t)]
 		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+
 	}
 
 	switch {

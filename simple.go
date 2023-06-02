@@ -32,7 +32,7 @@ func (v *simpleType[T]) String() string {
 	if v.val == nil {
 		return fmt.Sprint(nil)
 	}
-	return fmt.Sprintf("%v", *v.val)
+	return fmt.Sprint(v.val)
 }
 
 func (v *simpleType[T]) StrConverter(s string) (T, error) {
