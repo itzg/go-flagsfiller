@@ -31,7 +31,6 @@ func processGeneral[T any](fieldRef interface{}, val flagVal[T],
 	hasDefaultTag bool, tagDefault string,
 	flagSet *flag.FlagSet, renamed string,
 	usage string, aliases string) (err error) {
-
 	casted := fieldRef.(*T)
 	if hasDefaultTag {
 		*casted, err = val.StrConverter(tagDefault)

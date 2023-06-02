@@ -3,6 +3,7 @@ package flagsfiller_test
 import (
 	"flag"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 func TestTime(t *testing.T) {
 	type Config struct {
-		T time.Time `layout:"2006-Jan-02==15:04:05"`
+		T time.Time `default:"2010-Oct-01==10:02:03" layout:"2006-Jan-02==15:04:05"`
 	}
 
 	var config Config
@@ -24,9 +25,15 @@ func TestTime(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
+	//test default tag
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+	expeted, _ := time.Parse("2006-Jan-02==15:04:05", "2010-Oct-01==10:02:03")
+	assert.Equal(t, expeted, config.T)
+
 	err = flagset.Parse([]string{"-t", "2016-Dec-13==16:03:02"})
 	require.NoError(t, err)
-	expeted, _ := time.Parse("2006-01-02 15:04:05", "2016-12-13 16:03:02")
+	expeted, _ = time.Parse("2006-01-02 15:04:05", "2016-12-13 16:03:02")
 	assert.Equal(t, expeted, config.T)
 }
 
@@ -85,4 +92,28 @@ func TestIPNet(t *testing.T) {
 	require.NoError(t, err)
 	_, expected, _ := net.ParseCIDR("192.168.1.0/24")
 	assert.Equal(t, *expected, config.Prefix)
+}
+
+func TestTextUnmarshalerType(t *testing.T) {
+	type Config struct {
+		Addr netip.Addr `default:"9.9.9.9"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	//test default tag
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+	assert.Equal(t, netip.AddrFrom4([4]byte{9, 9, 9, 9}), config.Addr)
+
+	err = flagset.Parse([]string{"-addr", "1.2.3.4"})
+	require.NoError(t, err)
+
+	assert.Equal(t, netip.AddrFrom4([4]byte{1, 2, 3, 4}), config.Addr)
 }

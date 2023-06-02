@@ -33,8 +33,10 @@ import "github.com/itzg/go-flagsfiller"
 	- `net.IP` parse via net.ParseIP()
 	- `net.IPNet` parse via net.ParseCIDR()
 	- `net.HardwareAddr` parse via net.ParseMAC()
+	- and all types that implement encoding.TextUnmarshaler interface
 - Optionally set flag values from environment variables. Similar to flag names, environment variable names are derived automatically from the field names
 - New types could be supported via user code, via `RegisterSimpleType(ConvertFunc)`, check [time.go](time.go) and [net.go](net.go) to see how it works
+	- note: in case of a registered type also implements encoding.TextUnmarshaler, then registered type's ConvertFunc is preferred 
 
 ## Quick example
 
