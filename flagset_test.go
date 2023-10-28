@@ -603,7 +603,7 @@ func TestStringToStringMap(t *testing.T) {
 	err = flagset.Parse([]string{"--no-default",
 		"k1=v1",
 		"--no-default",
-		"k2=v2,k3=v3\nk4=v4",
+		"k2=v2,k3=v3\nk4=v4\n",
 	})
 	require.NoError(t, err)
 
