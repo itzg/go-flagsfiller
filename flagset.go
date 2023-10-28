@@ -660,7 +660,17 @@ func (s *strSliceVar) Set(val string) error {
 
 func parseStringSlice(val string) []string {
 	splitter := regexp.MustCompile("[\n,]")
-	return splitter.Split(val, -1)
+	parts := splitter.Split(val, -1)
+
+	// trim out blank parts
+	result := make([]string, 0, len(parts))
+	for _, s := range parts {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			result = append(result, s)
+		}
+	}
+	return result
 }
 
 type strToStrMapVar struct {
@@ -702,11 +712,15 @@ func parseStringToStringMap(val string) map[string]string {
 
 	pairs := splitter.Split(val, -1)
 	for _, pair := range pairs {
-		kv := strings.SplitN(pair, "=", 2)
-		if len(kv) == 2 {
-			result[kv[0]] = kv[1]
-		} else {
-			result[kv[0]] = ""
+		pair = strings.TrimSpace(pair)
+
+		if pair != "" {
+			kv := strings.SplitN(pair, "=", 2)
+			if len(kv) == 2 {
+				result[kv[0]] = kv[1]
+			} else {
+				result[kv[0]] = ""
+			}
 		}
 	}
 
