@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -658,7 +659,8 @@ func (s *strSliceVar) Set(val string) error {
 }
 
 func parseStringSlice(val string) []string {
-	return strings.Split(val, ",")
+	splitter := regexp.MustCompile("[\n,]")
+	return splitter.Split(val, -1)
 }
 
 type strToStrMapVar struct {
@@ -696,7 +698,9 @@ func (s strToStrMapVar) Set(val string) error {
 func parseStringToStringMap(val string) map[string]string {
 	result := make(map[string]string)
 
-	pairs := strings.Split(val, ",")
+	splitter := regexp.MustCompile("[\n,]")
+
+	pairs := splitter.Split(val, -1)
 	for _, pair := range pairs {
 		kv := strings.SplitN(pair, "=", 2)
 		if len(kv) == 2 {

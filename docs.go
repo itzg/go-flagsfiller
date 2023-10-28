@@ -110,7 +110,7 @@ converted into the field's type. For example,
 
 FlagSetFiller also includes support for []string fields.
 Repetition of the argument appends to the slice and/or an argument value can contain a
-comma-separated list of values.
+comma or newline separated list of values.
 
 For example:
 
@@ -126,7 +126,7 @@ The default tag's value is provided as a comma-separated list, such as
 
 FlagSetFiller also includes support for map[string]string fields.
 Each argument entry is a key=value and/or repetition of the arguments adds to the map or
-multiple entries can be comma-separated in a single argument value.
+multiple entries can be comma or newline separated in a single argument value.
 
 For example:
 

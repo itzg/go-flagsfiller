@@ -560,12 +560,13 @@ func TestStringSlice(t *testing.T) {
 		"--no-default", "nd1",
 		"--no-default", "nd2",
 		"--no-default", "nd3,nd4",
+		"--no-default", "nd5\nnd6",
 		"--tag-default", "three",
 		"--tag-override", "three",
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{"nd1", "nd2", "nd3", "nd4"}, config.NoDefault)
+	assert.Equal(t, []string{"nd1", "nd2", "nd3", "nd4", "nd5", "nd6"}, config.NoDefault)
 	assert.Equal(t, []string{"apple", "orange"}, config.InstanceDefault)
 	assert.Equal(t, []string{"one", "two", "three"}, config.TagDefault)
 	assert.Equal(t, []string{"three"}, config.TagOverride)
@@ -599,10 +600,14 @@ func TestStringToStringMap(t *testing.T) {
     	 \(default (veggie=carrot,fruit=apple|fruit=apple,veggie=carrot)\)
 `, buf.String())
 
-	err = flagset.Parse([]string{"--no-default", "k1=v1", "--no-default", "k2=v2,k3=v3"})
+	err = flagset.Parse([]string{"--no-default",
+		"k1=v1",
+		"--no-default",
+		"k2=v2,k3=v3\nk4=v4",
+	})
 	require.NoError(t, err)
 
-	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2", "k3": "v3"}, config.NoDefault)
+	assert.Equal(t, map[string]string{"k1": "v1", "k2": "v2", "k3": "v3", "k4": "v4"}, config.NoDefault)
 	assert.Equal(t, map[string]string{"fruit": "apple", "veggie": "carrot"}, config.TagDefault)
 }
 
