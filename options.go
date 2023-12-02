@@ -13,9 +13,10 @@ var DefaultFieldRenamer = KebabRenamer()
 type FillerOption func(opt *fillerOptions)
 
 type fillerOptions struct {
-	fieldRenamer []Renamer
-	envRenamer   []Renamer
-	noSetFromEnv bool
+	fieldRenamer      []Renamer
+	envRenamer        []Renamer
+	noSetFromEnv      bool
+	valueSplitPattern string
 }
 
 // WithFieldRenamer declares an option to customize the Renamer used to convert field names
@@ -51,6 +52,14 @@ func NoSetFromEnv() FillerOption {
 	}
 }
 
+// WithValueSplitPattern allows for changing the default value splitting regex pattern from newlines and commas.
+// Any empty string can be provided for pattern to disable value splitting.
+func WithValueSplitPattern(pattern string) FillerOption {
+	return func(opt *fillerOptions) {
+		opt.valueSplitPattern = pattern
+	}
+}
+
 func (o *fillerOptions) renameLongName(name string) string {
 	if len(o.fieldRenamer) == 0 {
 		return DefaultFieldRenamer(name)
@@ -63,7 +72,9 @@ func (o *fillerOptions) renameLongName(name string) string {
 }
 
 func newFillerOptions(options ...FillerOption) *fillerOptions {
-	v := &fillerOptions{}
+	v := &fillerOptions{
+		valueSplitPattern: "[\n,]",
+	}
 	for _, opt := range options {
 		opt(v)
 	}

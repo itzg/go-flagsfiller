@@ -302,7 +302,7 @@ func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag b
 		_ = f.processCustom(
 			fieldRef,
 			func(s string) (interface{}, error) {
-				return parseStringSlice(s), nil
+				return parseStringSlice(s, f.options.valueSplitPattern), nil
 			},
 			hasDefaultTag,
 			tagDefault,
@@ -314,12 +314,20 @@ func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag b
 		return
 	}
 	if hasDefaultTag {
-		*casted = parseStringSlice(tagDefault)
+		*casted = parseStringSlice(tagDefault, f.options.valueSplitPattern)
 	}
-	flagSet.Var(&strSliceVar{ref: casted, override: override}, renamed, usage)
+	flagSet.Var(&strSliceVar{
+		ref:               casted,
+		override:          override,
+		valueSplitPattern: f.options.valueSplitPattern,
+	}, renamed, usage)
 	if aliases != "" {
 		for _, alias := range strings.Split(aliases, ",") {
-			flagSet.Var(&strSliceVar{ref: casted, override: override}, alias, usage)
+			flagSet.Var(&strSliceVar{
+				ref:               casted,
+				override:          override,
+				valueSplitPattern: f.options.valueSplitPattern,
+			}, alias, usage)
 		}
 	}
 }
@@ -634,8 +642,9 @@ func (f *FlagSetFiller) processCustom(fieldRef interface{}, converter func(strin
 }
 
 type strSliceVar struct {
-	ref      *[]string
-	override bool
+	ref               *[]string
+	override          bool
+	valueSplitPattern string
 }
 
 func (s *strSliceVar) String() string {
@@ -646,7 +655,7 @@ func (s *strSliceVar) String() string {
 }
 
 func (s *strSliceVar) Set(val string) error {
-	parts := parseStringSlice(val)
+	parts := parseStringSlice(val, s.valueSplitPattern)
 
 	if s.override {
 		*s.ref = parts
@@ -658,8 +667,12 @@ func (s *strSliceVar) Set(val string) error {
 	return nil
 }
 
-func parseStringSlice(val string) []string {
-	splitter := regexp.MustCompile("[\n,]")
+func parseStringSlice(val string, valueSplitPattern string) []string {
+	if valueSplitPattern == "" {
+		return []string{val}
+	}
+
+	splitter := regexp.MustCompile(valueSplitPattern)
 	parts := splitter.Split(val, -1)
 
 	// trim out blank parts
