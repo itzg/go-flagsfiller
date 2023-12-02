@@ -572,6 +572,29 @@ func TestStringSlice(t *testing.T) {
 	assert.Equal(t, []string{"three"}, config.TagOverride)
 }
 
+func TestStringSliceWithEmptyValuePattern(t *testing.T) {
+	type Config struct {
+		NoDefault  []string
+		TagDefault []string `default:"one,two"`
+	}
+
+	var config Config
+	filler := flagsfiller.New(flagsfiller.WithValueSplitPattern(""))
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{
+		"--no-default", "nd1,nd2",
+		"--no-default", "nd3",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"nd1,nd2", "nd3"}, config.NoDefault)
+	assert.Equal(t, []string{"one,two"}, config.TagDefault)
+}
+
 func TestStringToStringMap(t *testing.T) {
 	type Config struct {
 		NoDefault       map[string]string
