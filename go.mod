@@ -1,6 +1,6 @@
 module github.com/itzg/go-flagsfiller
 
-go 1.19
+go 1.21
 
 require (
 	github.com/iancoleman/strcase v0.3.0
