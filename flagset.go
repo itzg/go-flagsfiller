@@ -200,7 +200,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	if isSupportedStruct(fieldRef) {
 		handler := extendedTypes[getTypeName(t)]
 		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-
+		return err
 	}
 
 	switch {

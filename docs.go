@@ -146,6 +146,7 @@ FlagSetFiller also supports following field types:
 - net.IPNet: format used by net.ParseCIDR()
 - net.HardwareAddr (MAC addr): format used by net.ParseMAC()
 - time.Time: format is the layout string used by time.Parse(), default layout is time.DateTime, could be overriden by field tag "layout"
+- slog.Level: parsed as specified by https://pkg.go.dev/log/slog#Level.UnmarshalText, such as "info"
 
 # Environment variable mapping
 

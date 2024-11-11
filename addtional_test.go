@@ -2,6 +2,7 @@ package flagsfiller_test
 
 import (
 	"flag"
+	"log/slog"
 	"net"
 	"net/netip"
 	"testing"
@@ -116,4 +117,60 @@ func TestTextUnmarshalerType(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, netip.AddrFrom4([4]byte{1, 2, 3, 4}), config.Addr)
+}
+
+func TestSlogLevels(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		expected slog.Level
+	}{
+		{
+			name:     "info",
+			value:    "info",
+			expected: slog.LevelInfo,
+		},
+		{
+			name:     "error",
+			value:    "error",
+			expected: slog.LevelError,
+		},
+		{
+			name: "numeric offset",
+			// Borrowed from https://pkg.go.dev/log/slog#Level.UnmarshalText
+			value:    "Error-8",
+			expected: slog.LevelInfo,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var args struct {
+				Level slog.Level
+			}
+
+			var flagset flag.FlagSet
+			err := flagsfiller.New().Fill(&flagset, &args)
+			require.NoError(t, err)
+
+			err = flagset.Parse([]string{"--level", test.value})
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expected, args.Level)
+		})
+	}
+}
+
+func TestSlogLevelWithDefault(t *testing.T) {
+	var args struct {
+		Level slog.Level `default:"info"`
+	}
+
+	var flagset flag.FlagSet
+	err := flagsfiller.New().Fill(&flagset, &args)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+
+	assert.Equal(t, slog.LevelInfo, args.Level)
 }
