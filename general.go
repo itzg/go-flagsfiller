@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// this is a list of addtional supported types(include struct), like time.Time, that walkFields() won't walk into,
+// this is a list of additional supported types(include struct), like time.Time, that walkFields() won't walk into,
 // the key is the is string returned by the getTypeName(<type>),
 // each supported type need to be added in this map in init()
 var extendedTypes = make(map[string]handlerFunc)
