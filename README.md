@@ -27,8 +27,8 @@ import "github.com/itzg/go-flagsfiller"
 - Declare flag usage via struct tag `usage`
 - Can be combined with other modules, such as [google/subcommands](https://github.com/google/subcommands) for sub-command processing. Can also be integrated with [spf13/cobra](https://github.com/spf13/cobra) by using pflag's [AddGoFlagSet](https://godoc.org/github.com/spf13/pflag#FlagSet.AddGoFlagSet)
 - Beyond the standard types supported by flag.FlagSet also includes support for:
-    - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma-separated list of values. For example: `--arg one --arg two,three`
-    - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
+    - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma or newline-separated list of values. For example: `--arg one --arg two,three`
+    - `map[string]string` where each entry is a `key=value` and/or repetition of the arguments adds to the map or multiple entries can be comma or newline-separated in a single argument value. For example: `--arg k1=v1 --arg k2=v2,k3=v3`
 	- `time.Time` parse via time.Parse(), with tag `layout` specify the layout string, default is "2006-01-02 15:04:05"
 	- `net.IP` parse via net.ParseIP()
 	- `net.IPNet` parse via net.ParseCIDR()
