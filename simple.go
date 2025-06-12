@@ -48,6 +48,10 @@ func (v *simpleType[T]) Set(s string) error {
 	return nil
 }
 
+func (v *simpleType[T]) Type() string {
+	return getTypeName(reflect.TypeOf(*new(T)))
+}
+
 func (v *simpleType[T]) SetRef(t *T) {
 	v.val = t
 }
