@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -459,6 +461,32 @@ func TestDefaultsViaTag(t *testing.T) {
     	 (default "h1")
   -timeout duration
     	 (default 5s)
+`, buf.String())
+}
+
+func TestSimpleTypeDefaultsViaTag(t *testing.T) {
+	type Config struct {
+		Count int16 `default:"42"`
+	}
+
+	flagsfiller.RegisterSimpleType(func(s string, tag reflect.StructTag) (int16, error) {
+		i, err := strconv.ParseInt(s, 10, 16)
+		return int16(i), err
+	})
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	buf := grabUsage(flagset)
+
+	assert.Equal(t, `
+  -count value
+    	 (default 42)
 `, buf.String())
 }
 
