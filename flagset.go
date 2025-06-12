@@ -667,6 +667,10 @@ func (s *strSliceVar) Set(val string) error {
 	return nil
 }
 
+func (s *strSliceVar) Type() string {
+	return getTypeName(reflect.TypeOf(s.ref))
+}
+
 func parseStringSlice(val string, valueSplitPattern string) []string {
 	if valueSplitPattern == "" {
 		return []string{val}
@@ -716,6 +720,10 @@ func (s strToStrMapVar) Set(val string) error {
 		s.val[k] = v
 	}
 	return nil
+}
+
+func (s strToStrMapVar) Type() string {
+	return getTypeName(reflect.TypeOf(s.val))
 }
 
 func parseStringToStringMap(val string) map[string]string {

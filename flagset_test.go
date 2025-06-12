@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/itzg/go-flagsfiller"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -148,7 +150,7 @@ func TestUsage(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -multi-word-name string
@@ -377,7 +379,7 @@ func TestNumbers(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -val-float-64 float
@@ -421,7 +423,7 @@ func TestDefaultsViaLiteral(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, "un-exported", config.Nested.unExported)
 
@@ -452,7 +454,7 @@ func TestDefaultsViaTag(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -enabled
@@ -482,7 +484,7 @@ func TestSimpleTypeDefaultsViaTag(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -count value
@@ -571,7 +573,7 @@ func TestStringSlice(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -instance-default value
@@ -639,7 +641,7 @@ func TestStringToStringMap(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	// using regexp assertion since -tag-default's map entries can be either order
 	assert.Regexp(t, `
@@ -675,7 +677,7 @@ func TestUsagePlaceholders(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -some-url URL
@@ -722,7 +724,7 @@ func TestIgnoreNonExportedFields(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -host string
@@ -745,7 +747,7 @@ func TestIgnoreNonExportedStructFields(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -host string
@@ -770,7 +772,7 @@ func TestWithEnv(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -host string
@@ -799,7 +801,7 @@ func TestWithEnvOverride(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -host string
@@ -820,7 +822,7 @@ func TestWithEnvOverrideDisable(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -host string
@@ -846,7 +848,7 @@ func TestNoSetFromEnv(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Empty(t, config.Host)
 
@@ -869,7 +871,7 @@ func TestFlagNameOverride(t *testing.T) {
 	var flagset flag.FlagSet
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
-	buf := grabUsage(flagset)
+	buf := grabUsage(&flagset)
 
 	assert.Equal(t, `
   -server_address string
@@ -878,7 +880,12 @@ func TestFlagNameOverride(t *testing.T) {
 
 }
 
-func grabUsage(flagset flag.FlagSet) *bytes.Buffer {
+type flagSet interface {
+	SetOutput(io.Writer)
+	PrintDefaults()
+}
+
+func grabUsage(flagset flagSet) *bytes.Buffer {
 	var buf bytes.Buffer
 	buf.Write([]byte{'\n'})
 	// start with newline to make expected string nicer below
@@ -908,4 +915,40 @@ func ExampleWithEnv() {
 	fmt.Println(config.MultiWordName)
 	// Output:
 	// from env
+}
+
+func TestTypeNamesWithPFlag(t *testing.T) {
+	type Config struct {
+		Enabled bool
+		Timeout time.Duration
+		Count   int16
+		Hosts   []string
+		Map     map[string]string
+	}
+
+	flagsfiller.RegisterSimpleType(func(s string, tag reflect.StructTag) (int16, error) {
+		i, err := strconv.ParseInt(s, 10, 16)
+		return int16(i), err
+	})
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	var pflagSet pflag.FlagSet
+	pflagSet.AddGoFlagSet(&flagset)
+
+	buf := grabUsage(&pflagSet)
+
+	assert.Equal(t, `
+      --count int16             
+      --enabled                 
+      --hosts []string          
+      --map map[string]string   
+      --timeout duration         (default 0s)
+`, buf.String())
 }
