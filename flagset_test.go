@@ -278,6 +278,9 @@ func TestNestedStructPtr(t *testing.T) {
 	type Config struct {
 		Host         string
 		SomeGrouping *Nested
+		Inner        struct {
+			Deeper *Nested
+		}
 	}
 
 	var config Config
@@ -288,11 +291,15 @@ func TestNestedStructPtr(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"--host", "h1", "--some-grouping-some-field", "val1"})
+	err = flagset.Parse([]string{"--host", "h1",
+		"--some-grouping-some-field", "val1",
+		"--inner-deeper-some-field", "val2"})
+	require.NoError(t, err)
 	require.NoError(t, err)
 
 	assert.Equal(t, "h1", config.Host)
 	assert.Equal(t, "val1", config.SomeGrouping.SomeField)
+	assert.Equal(t, "val2", config.Inner.Deeper.SomeField)
 }
 
 func TestNestedUnexportedStructPtr(t *testing.T) {
@@ -878,6 +885,33 @@ func TestFlagNameOverride(t *testing.T) {
     	address of server
 `, buf.String())
 
+}
+
+func TestFlatten(t *testing.T) {
+	type Config struct {
+		Flattened struct {
+			FlattenedField string
+		} `flatten:"true"`
+		PtrFlattened *struct {
+			PtrFlattenedField string
+		} `flatten:"true"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{"--flattened-field", "val1",
+		"--ptr-flattened-field", "val2"})
+	require.NoError(t, err)
+	require.NoError(t, err)
+
+	assert.Equal(t, "val1", config.Flattened.FlattenedField)
+	assert.Equal(t, "val2", config.PtrFlattened.PtrFlattenedField)
 }
 
 type flagSet interface {

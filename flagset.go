@@ -18,6 +18,15 @@ var (
 	stringToStringMapType = reflect.TypeOf(map[string]string{})
 )
 
+const (
+	TagDefault       = "default"
+	TagEnv           = "env"
+	TagFlag          = "flag"
+	TagFlatten       = "flatten"
+	TagOverrideValue = "override-value"
+	TagType          = "type"
+)
+
 // FlagSetFiller is used to map the fields of a struct into flags of a flag.FlagSet
 type FlagSetFiller struct {
 	options *fillerOptions
@@ -57,6 +66,8 @@ func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
 	}
 }
 
+// isSupportedStruct checks if the given field reference is a registered extended type or implements
+// encoding.TextUnmarshaler
 func isSupportedStruct(in any) bool {
 	t := reflect.TypeOf(in)
 	_, ok := extendedTypes[getTypeName(t)]
@@ -106,7 +117,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 		field := structType.Field(i)
 		fieldValue := structVal.Field(i)
 
-		if flagTag, ok := field.Tag.Lookup("flag"); ok {
+		if flagTag, ok := field.Tag.Lookup(TagFlag); ok {
 			if flagTag == "" {
 				continue
 			}
@@ -114,7 +125,6 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 
 		switch field.Type.Kind() {
 		case reflect.Struct:
-			// fieldTypeName := getTypeName(field.Type)
 			if field.IsExported() {
 				if isSupportedStruct(fieldValue.Addr().Interface()) {
 					err := handleDefault(field, fieldValue)
@@ -124,7 +134,11 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 					continue
 				}
 			}
-			err := f.walkFields(flagSet, prefix+field.Name, fieldValue, field.Type)
+
+			err := f.walkFields(flagSet,
+				qualifiedNameForStructField(field, prefix),
+				fieldValue,
+				field.Type)
 			if err != nil {
 				return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
 			}
@@ -146,7 +160,10 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 					}
 				}
 
-				err := f.walkFields(flagSet, field.Name, fieldValue.Elem(), field.Type.Elem())
+				err := f.walkFields(flagSet,
+					qualifiedNameForStructField(field, prefix),
+					fieldValue.Elem(),
+					field.Type.Elem())
 				if err != nil {
 					return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
 				}
@@ -163,11 +180,27 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 	return nil
 }
 
+func qualifiedNameForStructField(field reflect.StructField, prefix string) string {
+	if !shouldFlatten(field) {
+		return prefix + field.Name
+	} else {
+		return prefix
+	}
+}
+
+func shouldFlatten(field reflect.StructField) bool {
+	value, ok := field.Tag.Lookup(TagFlatten)
+	if !ok {
+		return false
+	}
+	return value == "true"
+}
+
 func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{},
 	name string, t reflect.Type, tag reflect.StructTag) (err error) {
 
 	var envName string
-	if override, exists := tag.Lookup("env"); exists {
+	if override, exists := tag.Lookup(TagEnv); exists {
 		envName = override
 	} else if len(f.options.envRenamer) > 0 {
 		envName = name
@@ -182,12 +215,12 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		usage = fmt.Sprintf("%s (env %s)", usage, envName)
 	}
 
-	tagDefault, hasDefaultTag := tag.Lookup("default")
+	tagDefault, hasDefaultTag := tag.Lookup(TagDefault)
 
-	fieldType, _ := tag.Lookup("type")
+	fieldType, _ := tag.Lookup(TagType)
 
 	var renamed string
-	if override, exists := tag.Lookup("flag"); exists {
+	if override, exists := tag.Lookup(TagFlag); exists {
 		if override == "" {
 			// empty flag override signal to skip this field
 			return nil
@@ -231,7 +264,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 
 	case t == stringSliceType, fieldType == "stringSlice":
 		var override bool
-		if overrideValue, exists := tag.Lookup("override-value"); exists {
+		if overrideValue, exists := tag.Lookup(TagOverrideValue); exists {
 			if value, err := strconv.ParseBool(overrideValue); err == nil {
 				override = value
 			}
