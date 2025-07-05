@@ -174,13 +174,14 @@ the field should be ignored and no flag is declared. For example,
 	Host        string `flag:"server_address"
 	GetsIgnored string `flag:""`
 
-To help with organization, struct fields can be flattened such that the resolved flag name does not include the name of the struct itself. For example, this struct will accept the flags named simply `-host` and `-port`.
+To help with organization, struct fields can be flattened by setting the tag `flatten:"true"`. As such, the resolved flag name does not include the name of the struct itself. For example, this struct will accept the flags named simply `-host` and `-port` at the same level as `-name`.
 
 	type struct Config {
+		Name string
 		NetworkConfig struct {
 			Host string
 			Port int
-		}
+		} `flatten:"true"`
 	}
 
 Environment variable naming and processing can be overridden with the `env:"name"` tag, where
