@@ -25,6 +25,7 @@ import "github.com/itzg/go-flagsfiller"
 - Allows defaults to be given via struct tag `default`
 - Falls back to using instance field values as declared default
 - Declare flag usage via struct tag `usage`
+- Mark flags as required via struct tag `required` and validate with `Verify()` method (cannot be combined with `default` tag)
 - Can be combined with other modules, such as [google/subcommands](https://github.com/google/subcommands) for sub-command processing. Can also be integrated with [spf13/cobra](https://github.com/spf13/cobra) by using pflag's [AddGoFlagSet](https://godoc.org/github.com/spf13/pflag#FlagSet.AddGoFlagSet)
 - Beyond the standard types supported by flag.FlagSet also includes support for:
     - `[]string` where repetition of the argument appends to the slice and/or an argument value can contain a comma or newline-separated list of values. For example: `--arg one --arg two,three`
@@ -92,6 +93,36 @@ The following shows an example of the usage provided when passing `--help`:
   -max-timeout duration
     	How long to wait (default 5s)
 ```
+
+## Required flags
+
+Flags can be marked as required using the `required:"true"` struct tag. After parsing command-line arguments, call the `Verify()` method to ensure all required flags have been provided:
+
+```go
+type Config struct {
+    Host     string `required:"true" usage:"The remote host"`
+    Port     int    `default:"8080" usage:"The port"`
+    Username string `required:"true" usage:"Username for authentication"`
+}
+
+var config Config
+
+filler := flagsfiller.New()
+err := filler.Fill(flag.CommandLine, &config)
+if err != nil {
+    log.Fatal(err)
+}
+
+flag.Parse()
+
+// Verify all required fields are set
+err = filler.Verify()
+if err != nil {
+    log.Fatal(err) // Will fail if Host or Username not provided
+}
+```
+
+**Note:** A field cannot be both required and have a default value. Attempting to use both tags will result in an error during `Fill()`.
 
 ## Real world example
 
