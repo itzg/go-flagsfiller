@@ -291,9 +291,11 @@ func TestNestedStructPtr(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"--host", "h1",
+	err = flagset.Parse([]string{
+		"--host", "h1",
 		"--some-grouping-some-field", "val1",
-		"--inner-deeper-some-field", "val2"})
+		"--inner-deeper-some-field", "val2",
+	})
 	require.NoError(t, err)
 	require.NoError(t, err)
 
@@ -414,7 +416,7 @@ func TestDefaultsViaLiteral(t *testing.T) {
 		Nested  *Nested
 	}
 
-	var config = Config{
+	config := Config{
 		Host:    "h1",
 		Enabled: true,
 		Timeout: 5 * time.Second,
@@ -539,7 +541,6 @@ func TestBadFieldErrorMessage(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.Error(t, err)
 	assert.Equal(t, "failed to process Enabled of flagsfiller_test.BadBoolConfig: failed to parse default into bool: strconv.ParseBool: parsing \"wrong\": invalid syntax", err.Error())
-
 }
 
 func TestHiddenFields(t *testing.T) {
@@ -660,7 +661,8 @@ func TestStringToStringMap(t *testing.T) {
     	 \(default (veggie=carrot,fruit=apple|fruit=apple,veggie=carrot)\)
 `, buf.String())
 
-	err = flagset.Parse([]string{"--no-default",
+	err = flagset.Parse([]string{
+		"--no-default",
 		"k1=v1",
 		"--no-default",
 		"k2=v2,k3=v3\nk4=v4\n",
@@ -884,7 +886,6 @@ func TestFlagNameOverride(t *testing.T) {
   -server_address string
     	address of server
 `, buf.String())
-
 }
 
 func TestFlatten(t *testing.T) {
@@ -905,8 +906,10 @@ func TestFlatten(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	require.NoError(t, err)
 
-	err = flagset.Parse([]string{"--flattened-field", "val1",
-		"--ptr-flattened-field", "val2"})
+	err = flagset.Parse([]string{
+		"--flattened-field", "val1",
+		"--ptr-flattened-field", "val2",
+	})
 	require.NoError(t, err)
 	require.NoError(t, err)
 
@@ -985,4 +988,372 @@ func TestTypeNamesWithPFlag(t *testing.T) {
       --map map[string]string   
       --timeout duration         (default 0s)
 `, buf.String())
+}
+
+func TestRequiredFieldSet(t *testing.T) {
+	type Config struct {
+		Host     string `required:"true" usage:"the host"`
+		Optional string `usage:"optional field"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{"--host", "example.com"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.Equal(t, "example.com", config.Host)
+}
+
+func TestRequiredFieldNotSet(t *testing.T) {
+	type Config struct {
+		Host     string `required:"true" usage:"the host"`
+		Optional string `usage:"optional field"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{"--optional", "value"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "required flags not set")
+	assert.Contains(t, err.Error(), "host")
+}
+
+func TestRequiredFieldWithDefault(t *testing.T) {
+	type Config struct {
+		Host string `required:"true" default:"localhost" usage:"the host"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be both required and have a default")
+	assert.Contains(t, err.Error(), "\"Host\"")
+}
+
+func TestMultipleRequiredFields(t *testing.T) {
+	type Config struct {
+		Host     string `required:"true" usage:"the host"`
+		Port     int    `required:"true" usage:"the port"`
+		Optional string `usage:"optional field"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	// Set only host, not port
+	err = flagset.Parse([]string{"--host", "example.com"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "required flags not set")
+	assert.Contains(t, err.Error(), "port")
+	assert.NotContains(t, err.Error(), "host")
+}
+
+func TestMultipleRequiredFieldsAllMissing(t *testing.T) {
+	type Config struct {
+		Host string `required:"true" usage:"the host"`
+		Port int    `required:"true" usage:"the port"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "required flags not set")
+	assert.Contains(t, err.Error(), "host")
+	assert.Contains(t, err.Error(), "port")
+}
+
+func TestRequiredNestedField(t *testing.T) {
+	type Config struct {
+		Database struct {
+			Host string `required:"true" usage:"database host"`
+			Port int    `usage:"database port"`
+		}
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	err = flagset.Parse([]string{"--database-port", "5432"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "required flags not set")
+	assert.Contains(t, err.Error(), "database-host")
+}
+
+func TestRequiredFieldWithEnv(t *testing.T) {
+	type Config struct {
+		Host string `required:"true" usage:"the host"`
+	}
+
+	var config Config
+
+	assert.NoError(t, os.Setenv("APP_HOST", "env-host"))
+	defer os.Unsetenv("APP_HOST")
+
+	filler := flagsfiller.New(flagsfiller.WithEnv("App"))
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	// Don't pass --host flag, should be set from env
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+
+	// Should pass because env var set the value
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.Equal(t, "env-host", config.Host)
+}
+
+func TestRequiredBoolField(t *testing.T) {
+	type Config struct {
+		EnableFeature bool `required:"true" usage:"enable the feature"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	// Bool flag not set - should be false (zero value)
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "enable-feature")
+
+	// Now set it
+	config.EnableFeature = false // reset
+	err = flagset.Parse([]string{"--enable-feature"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.True(t, config.EnableFeature)
+}
+
+func TestRequiredDurationField(t *testing.T) {
+	type Config struct {
+		Timeout time.Duration `required:"true" usage:"timeout duration"`
+	}
+
+	var config Config
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	// Duration not set - should be zero
+	err = flagset.Parse([]string{})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "timeout")
+
+	// Now set it
+	config.Timeout = 0 // reset
+	err = flagset.Parse([]string{"--timeout", "5s"})
+	require.NoError(t, err)
+
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.Equal(t, 5*time.Second, config.Timeout)
+}
+
+func TestRequiredFieldWithInstanceDefault(t *testing.T) {
+	type Config struct {
+		Host string `required:"true" usage:"the host"`
+		Port int    `usage:"the port"`
+	}
+
+	// Initialize with non-zero value
+	config := Config{
+		Host: "preset-host",
+		Port: 8080,
+	}
+
+	filler := flagsfiller.New()
+
+	var flagset flag.FlagSet
+	err := filler.Fill(&flagset, &config)
+	require.NoError(t, err)
+
+	// Parse without providing --host flag
+	err = flagset.Parse([]string{"--port", "9000"})
+	require.NoError(t, err)
+
+	// Should pass because Host has instance default (non-zero value)
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.Equal(t, "preset-host", config.Host)
+	assert.Equal(t, 9000, config.Port)
+}
+
+func TestRequiredSliceAndMapFields(t *testing.T) {
+	type Config struct {
+		Hosts    []string          `required:"true" usage:"list of hosts"`
+		Settings map[string]string `required:"true" usage:"settings map"`
+	}
+
+	t.Run("not set", func(t *testing.T) {
+		var config Config
+
+		filler := flagsfiller.New()
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+
+		err = flagset.Parse([]string{})
+		require.NoError(t, err)
+
+		err = filler.Verify()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "hosts")
+		assert.Contains(t, err.Error(), "settings")
+	})
+
+	t.Run("set", func(t *testing.T) {
+		var config Config
+
+		filler := flagsfiller.New()
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+
+		err = flagset.Parse([]string{"--hosts", "host1,host2", "--settings", "key1=val1"})
+		require.NoError(t, err)
+
+		err = filler.Verify()
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"host1", "host2"}, config.Hosts)
+		assert.Equal(t, map[string]string{"key1": "val1"}, config.Settings)
+	})
+}
+
+func TestMultipleFillCallsWithDifferentStructs(t *testing.T) {
+	type Config1 struct {
+		Host string `required:"true" usage:"the host"`
+	}
+	type Config2 struct {
+		Port int `required:"true" usage:"the port"`
+	}
+
+	var config1 Config1
+	var config2 Config2
+
+	filler := flagsfiller.New()
+
+	// Fill with first struct
+	var flagset1 flag.FlagSet
+	err := filler.Fill(&flagset1, &config1)
+	require.NoError(t, err)
+
+	// Fill with second struct (should not interfere with first)
+	var flagset2 flag.FlagSet
+	err = filler.Fill(&flagset2, &config2)
+	require.NoError(t, err)
+
+	// Parse both
+	err = flagset1.Parse([]string{"--host", "example.com"})
+	require.NoError(t, err)
+
+	err = flagset2.Parse([]string{"--port", "8080"})
+	require.NoError(t, err)
+
+	// Verify should check all required fields from both Fill calls
+	err = filler.Verify()
+	assert.NoError(t, err)
+	assert.Equal(t, "example.com", config1.Host)
+	assert.Equal(t, 8080, config2.Port)
+}
+
+func TestMultipleFillCallsWithMissingRequired(t *testing.T) {
+	type Config1 struct {
+		Host string `required:"true" usage:"the host"`
+	}
+	type Config2 struct {
+		Port int `required:"true" usage:"the port"`
+	}
+
+	var config1 Config1
+	var config2 Config2
+
+	filler := flagsfiller.New()
+
+	var flagset1 flag.FlagSet
+	err := filler.Fill(&flagset1, &config1)
+	require.NoError(t, err)
+
+	var flagset2 flag.FlagSet
+	err = filler.Fill(&flagset2, &config2)
+	require.NoError(t, err)
+
+	// Parse only config1, not config2
+	err = flagset1.Parse([]string{"--host", "example.com"})
+	require.NoError(t, err)
+
+	err = flagset2.Parse([]string{})
+	require.NoError(t, err)
+
+	// Verify should fail because config2.Port is missing
+	err = filler.Verify()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "port")
+	assert.NotContains(t, err.Error(), "host")
 }

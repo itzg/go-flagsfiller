@@ -24,19 +24,21 @@ const (
 	TagFlag          = "flag"
 	TagFlatten       = "flatten"
 	TagOverrideValue = "override-value"
+	TagRequired      = "required"
 	TagType          = "type"
 )
 
 // FlagSetFiller is used to map the fields of a struct into flags of a flag.FlagSet
 type FlagSetFiller struct {
-	options *fillerOptions
+	options        *fillerOptions
+	requiredFields map[string]any // tracks required field references by flag name
 }
 
 // Parse is a convenience function that creates a FlagSetFiller with the given options,
 // fills and maps the flags from the given struct reference into flag.CommandLine, and uses
 // flag.Parse to parse the os.Args.
 // Returns an error if the given struct could not be used for filling flags.
-func Parse(from interface{}, options ...FillerOption) error {
+func Parse(from any, options ...FillerOption) error {
 	filler := New(options...)
 	err := filler.Fill(flag.CommandLine, from)
 	if err != nil {
@@ -49,21 +51,59 @@ func Parse(from interface{}, options ...FillerOption) error {
 
 // New creates a new FlagSetFiller with zero or more of the given FillerOption's
 func New(options ...FillerOption) *FlagSetFiller {
-	return &FlagSetFiller{options: newFillerOptions(options...)}
+	return &FlagSetFiller{
+		options:        newFillerOptions(options...),
+		requiredFields: make(map[string]any),
+	}
 }
 
 // Fill populates the flagSet with a flag for each field in given struct passed in the 'from'
 // argument which must be a struct reference.
 // Fill returns an error when a non-struct reference is passed as 'from' or a field has a
 // default tag which could not converted to the field's type.
-func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from interface{}) error {
+func (f *FlagSetFiller) Fill(flagSet *flag.FlagSet, from any) error {
 	v := reflect.ValueOf(from)
 	t := v.Type()
-	if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct {
+	if t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct {
 		return f.walkFields(flagSet, "", v.Elem(), t.Elem())
 	} else {
 		return fmt.Errorf("can only fill from struct pointer, but it was %s", t.Kind())
 	}
+}
+
+// Verify checks that all required fields have been set on the struct.
+// Returns an error listing any required fields that were not provided.
+func (f *FlagSetFiller) Verify() error {
+	var missingFlags []string
+
+	for flagName, fieldRef := range f.requiredFields {
+		v := reflect.ValueOf(fieldRef)
+		if v.Kind() == reflect.Pointer {
+			v = v.Elem()
+		}
+
+		// Check if the field is unset
+		isUnset := false
+		if v.IsZero() {
+			isUnset = true
+		} else if v.Kind() == reflect.Slice && v.Len() == 0 {
+			// Empty slices are considered unset
+			isUnset = true
+		} else if v.Kind() == reflect.Map && v.Len() == 0 {
+			// Empty maps are considered unset
+			isUnset = true
+		}
+
+		if isUnset {
+			missingFlags = append(missingFlags, flagName)
+		}
+	}
+
+	if len(missingFlags) > 0 {
+		return fmt.Errorf("required flags not set: %s", strings.Join(missingFlags, ", "))
+	}
+
+	return nil
 }
 
 // isSupportedStruct checks if the given field reference is a registered extended type or implements
@@ -93,8 +133,8 @@ func getTypeName(t reflect.Type) string {
 }
 
 func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
-	structVal reflect.Value, structType reflect.Type) error {
-
+	structVal reflect.Value, structType reflect.Type,
+) error {
 	if prefix != "" {
 		prefix += "-"
 	}
@@ -102,7 +142,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 		addr := fieldValue.Addr()
 		// make sure it is exported/public
 		ftype := field.Type
-		if field.Type.Kind() == reflect.Ptr {
+		if field.Type.Kind() == reflect.Pointer {
 			ftype = field.Type.Elem()
 		}
 		if addr.CanInterface() {
@@ -143,7 +183,7 @@ func (f *FlagSetFiller) walkFields(flagSet *flag.FlagSet, prefix string,
 				return fmt.Errorf("failed to process %s of %s: %w", field.Name, structType.String(), err)
 			}
 
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if fieldValue.CanSet() && field.Type.Elem().Kind() == reflect.Struct {
 				// fieldTypeName := getTypeName(field.Type.Elem())
 				// fill the pointer with a new struct of their type if it is nil
@@ -196,9 +236,9 @@ func shouldFlatten(field reflect.StructField) bool {
 	return value == "true"
 }
 
-func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{},
-	name string, t reflect.Type, tag reflect.StructTag) (err error) {
-
+func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
+	name string, t reflect.Type, tag reflect.StructTag,
+) (err error) {
 	var envName string
 	if override, exists := tag.Lookup(TagEnv); exists {
 		envName = override
@@ -219,6 +259,12 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 
 	fieldType, _ := tag.Lookup(TagType)
 
+	// Check for required tag and validate it doesn't conflict with default
+	_, hasRequiredTag := tag.Lookup(TagRequired)
+	if hasRequiredTag && hasDefaultTag {
+		return fmt.Errorf("field %q cannot be both required and have a default value", name)
+	}
+
 	var renamed string
 	if override, exists := tag.Lookup(TagFlag); exists {
 		if override == "" {
@@ -233,7 +279,14 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	if isSupportedStruct(fieldRef) {
 		handler := extendedTypes[getTypeName(t)]
 		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-		return err
+		if err != nil {
+			return err
+		}
+		// Record required fields for extended types
+		if hasRequiredTag {
+			f.requiredFields[renamed] = fieldRef
+		}
+		return nil
 	}
 
 	switch {
@@ -281,6 +334,11 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 		return err
 	}
 
+	// Record required fields
+	if hasRequiredTag {
+		f.requiredFields[renamed] = fieldRef
+	}
+
 	if !f.options.noSetFromEnv && envName != "" {
 		if val, exists := os.LookupEnv(envName); exists {
 			err := flagSet.Lookup(renamed).Value.Set(val)
@@ -294,12 +352,12 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef interface{}
 	return nil
 }
 
-func (f *FlagSetFiller) processStringToStringMap(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
+func (f *FlagSetFiller) processStringToStringMap(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
 	casted, ok := fieldRef.(*map[string]string)
 	if !ok {
 		_ = f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				return parseStringToStringMap(s), nil
 			},
 			hasDefaultTag,
@@ -329,12 +387,12 @@ func (f *FlagSetFiller) processStringToStringMap(fieldRef interface{}, hasDefaul
 	}
 }
 
-func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, override bool, aliases string) {
+func (f *FlagSetFiller) processStringSlice(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, override bool, aliases string) {
 	casted, ok := fieldRef.(*[]string)
 	if !ok {
 		_ = f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				return parseStringSlice(s, f.options.valueSplitPattern), nil
 			},
 			hasDefaultTag,
@@ -365,12 +423,12 @@ func (f *FlagSetFiller) processStringSlice(fieldRef interface{}, hasDefaultTag b
 	}
 }
 
-func (f *FlagSetFiller) processUint(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processUint(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*uint)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.Atoi(s)
 				return value, err
 			},
@@ -402,12 +460,12 @@ func (f *FlagSetFiller) processUint(fieldRef interface{}, hasDefaultTag bool, ta
 	return err
 }
 
-func (f *FlagSetFiller) processUint64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processUint64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*uint64)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.ParseUint(s, 10, 64)
 				return value, err
 			},
@@ -437,12 +495,12 @@ func (f *FlagSetFiller) processUint64(fieldRef interface{}, hasDefaultTag bool, 
 	return err
 }
 
-func (f *FlagSetFiller) processInt(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processInt(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*int)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.Atoi(s)
 				return value, err
 			},
@@ -472,12 +530,12 @@ func (f *FlagSetFiller) processInt(fieldRef interface{}, hasDefaultTag bool, tag
 	return err
 }
 
-func (f *FlagSetFiller) processInt64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processInt64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*int64)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.ParseInt(s, 10, 64)
 				return value, err
 			},
@@ -507,12 +565,12 @@ func (f *FlagSetFiller) processInt64(fieldRef interface{}, hasDefaultTag bool, t
 	return nil
 }
 
-func (f *FlagSetFiller) processDuration(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processDuration(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*time.Duration)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := time.ParseDuration(s)
 				return value, err
 			},
@@ -542,12 +600,12 @@ func (f *FlagSetFiller) processDuration(fieldRef interface{}, hasDefaultTag bool
 	return nil
 }
 
-func (f *FlagSetFiller) processFloat64(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processFloat64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*float64)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.ParseFloat(s, 64)
 				return value, err
 			},
@@ -577,12 +635,12 @@ func (f *FlagSetFiller) processFloat64(fieldRef interface{}, hasDefaultTag bool,
 	return nil
 }
 
-func (f *FlagSetFiller) processBool(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
+func (f *FlagSetFiller) processBool(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*bool)
 	if !ok {
 		return f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				value, err := strconv.ParseBool(s)
 				return value, err
 			},
@@ -612,12 +670,12 @@ func (f *FlagSetFiller) processBool(fieldRef interface{}, hasDefaultTag bool, ta
 	return nil
 }
 
-func (f *FlagSetFiller) processString(fieldRef interface{}, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
+func (f *FlagSetFiller) processString(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
 	casted, ok := fieldRef.(*string)
 	if !ok {
 		_ = f.processCustom(
 			fieldRef,
-			func(s string) (interface{}, error) {
+			func(s string) (any, error) {
 				return s, nil
 			},
 			hasDefaultTag,
@@ -643,7 +701,7 @@ func (f *FlagSetFiller) processString(fieldRef interface{}, hasDefaultTag bool, 
 	}
 }
 
-func (f *FlagSetFiller) processCustom(fieldRef interface{}, converter func(string) (interface{}, error), hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) error {
+func (f *FlagSetFiller) processCustom(fieldRef any, converter func(string) (any, error), hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) error {
 	if hasDefaultTag {
 		value, err := converter(tagDefault)
 		if err != nil {
