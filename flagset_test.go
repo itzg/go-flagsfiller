@@ -1048,6 +1048,7 @@ func TestRequiredFieldWithDefault(t *testing.T) {
 	err := filler.Fill(&flagset, &config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot be both required and have a default")
+	assert.Contains(t, err.Error(), "\"Host\"")
 }
 
 func TestMultipleRequiredFields(t *testing.T) {

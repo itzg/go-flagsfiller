@@ -262,7 +262,7 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
 	// Check for required tag and validate it doesn't conflict with default
 	_, hasRequiredTag := tag.Lookup(TagRequired)
 	if hasRequiredTag && hasDefaultTag {
-		return fmt.Errorf("field cannot be both required and have a default value")
+		return fmt.Errorf("field %q cannot be both required and have a default value", name)
 	}
 
 	var renamed string
