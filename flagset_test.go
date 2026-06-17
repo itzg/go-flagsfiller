@@ -867,6 +867,40 @@ func TestNoSetFromEnv(t *testing.T) {
 `, buf.String())
 }
 
+func TestIgnoreEnvErrors(t *testing.T) {
+	type Config struct {
+		Count int
+	}
+
+	var config Config
+
+	assert.NoError(t, os.Setenv("APP_COUNT", "not-an-int"))
+	defer os.Unsetenv("APP_COUNT")
+
+	t.Run("error ignored", func(t *testing.T) {
+		filler := flagsfiller.New(
+			flagsfiller.WithEnv("App"),
+			flagsfiller.IgnoreEnvErrors(),
+		)
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+		assert.Equal(t, 0, config.Count)
+	})
+
+	t.Run("error not ignored", func(t *testing.T) {
+		filler := flagsfiller.New(
+			flagsfiller.WithEnv("App"),
+		)
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to set from environment variable APP_COUNT")
+	})
+}
+
 func TestFlagNameOverride(t *testing.T) {
 	type Config struct {
 		Host        string `flag:"server_address" usage:"address of server"`

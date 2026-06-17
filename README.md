@@ -94,6 +94,17 @@ The following shows an example of the usage provided when passing `--help`:
     	How long to wait (default 5s)
 ```
 
+## Ignoring Environment Variable Errors
+
+By default, `Fill()` will return an error if an environment variable is provided but cannot be parsed into the field's type. This can be problematic if you want to show usage/help even when an environment variable is invalid.
+
+You can use the `IgnoreEnvErrors()` option to suppress these errors:
+
+```go
+filler := flagsfiller.New(flagsfiller.IgnoreEnvErrors())
+err := filler.Fill(flag.CommandLine, &config)
+```
+
 ## Required flags
 
 Flags can be marked as required using the `required:"true"` struct tag. After parsing command-line arguments, call the `Verify()` method to ensure all required flags have been provided:

@@ -279,55 +279,47 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
 	if isSupportedStruct(fieldRef) {
 		handler := extendedTypes[getTypeName(t)]
 		err = handler(tag, fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-		if err != nil {
-			return err
-		}
-		// Record required fields for extended types
-		if hasRequiredTag {
-			f.requiredFields[renamed] = fieldRef
-		}
-		return nil
-	}
+	} else {
+		switch {
+		case t.Kind() == reflect.String:
+			f.processString(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	switch {
-	case t.Kind() == reflect.String:
-		f.processString(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Bool:
+			err = f.processBool(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Bool:
-		err = f.processBool(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Float64:
+			err = f.processFloat64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Float64:
-		err = f.processFloat64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		// NOTE check time.Duration before int64 since it is aliasesed from int64
+		case t == durationType, fieldType == "duration":
+			err = f.processDuration(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	// NOTE check time.Duration before int64 since it is aliasesed from int64
-	case t == durationType, fieldType == "duration":
-		err = f.processDuration(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Int64:
+			err = f.processInt64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Int64:
-		err = f.processInt64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Int:
+			err = f.processInt(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Int:
-		err = f.processInt(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Uint64:
+			err = f.processUint64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Uint64:
-		err = f.processUint64(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+		case t.Kind() == reflect.Uint:
+			err = f.processUint(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-	case t.Kind() == reflect.Uint:
-		err = f.processUint(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-
-	case t == stringSliceType, fieldType == "stringSlice":
-		var override bool
-		if overrideValue, exists := tag.Lookup(TagOverrideValue); exists {
-			if value, err := strconv.ParseBool(overrideValue); err == nil {
-				override = value
+		case t == stringSliceType, fieldType == "stringSlice":
+			var override bool
+			if overrideValue, exists := tag.Lookup(TagOverrideValue); exists {
+				if value, err := strconv.ParseBool(overrideValue); err == nil {
+					override = value
+				}
 			}
+			f.processStringSlice(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, override, aliases)
+
+		case t == stringToStringMapType, fieldType == "stringMap":
+			f.processStringToStringMap(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
+
+			// ignore any other types
 		}
-		f.processStringSlice(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, override, aliases)
-
-	case t == stringToStringMapType, fieldType == "stringMap":
-		f.processStringToStringMap(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
-
-		// ignore any other types
 	}
 
 	if err != nil {
@@ -341,10 +333,13 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
 
 	if !f.options.noSetFromEnv && envName != "" {
 		if val, exists := os.LookupEnv(envName); exists {
-			err := flagSet.Lookup(renamed).Value.Set(val)
-			if err != nil {
-				return fmt.Errorf("failed to set from environment variable %s: %w",
-					envName, err)
+			fsFlag := flagSet.Lookup(renamed)
+			if fsFlag != nil {
+				err := fsFlag.Value.Set(val)
+				if err != nil && !f.options.ignoreEnvErrors {
+					return fmt.Errorf("failed to set from environment variable %s: %w",
+						envName, err)
+				}
 			}
 		}
 	}

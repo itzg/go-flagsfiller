@@ -16,6 +16,7 @@ type fillerOptions struct {
 	fieldRenamer      []Renamer
 	envRenamer        []Renamer
 	noSetFromEnv      bool
+	ignoreEnvErrors   bool
 	valueSplitPattern string
 }
 
@@ -49,6 +50,14 @@ func WithEnvRenamer(renamer Renamer) FillerOption {
 func NoSetFromEnv() FillerOption {
 	return func(opt *fillerOptions) {
 		opt.noSetFromEnv = true
+	}
+}
+
+// IgnoreEnvErrors will cause the FlagSetFiller to ignore any errors that occur when setting
+// a flag's value from an environment variable.
+func IgnoreEnvErrors() FillerOption {
+	return func(opt *fillerOptions) {
+		opt.ignoreEnvErrors = true
 	}
 }
 

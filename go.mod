@@ -1,5 +1,6 @@
 module github.com/itzg/go-flagsfiller
 
+toolchain go1.26.4
 go 1.21
 
 require (
