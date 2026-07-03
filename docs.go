@@ -116,11 +116,27 @@ For example:
 
 	--arg one --arg two,three
 
-results in a three element slice.
+results in a three-element slice.
 
 The default tag's value is provided as a comma-separated list, such as
 
 	MultiValues []string `default:"one,two,three"`
+
+Slices of aliased string types are also supported, such as:
+
+	type EventType string
+
+	type Config struct {
+		EventTypes []EventType `default:"connect,disconnect"`
+	}
+
+A type alias of a string slice is also supported, such as:
+
+	type EventTypes []string
+
+	type Config struct {
+		EventTypes EventTypes `default:"connect,disconnect"`
+	}
 
 # Maps of String to String
 
@@ -134,13 +150,13 @@ For example:
 
 results in a map with three entries.
 
-The default tag's value is provided a comma-separate list of key=value entries, such as
+The default tag's value is provided a comma-separated list of key=value entries, such as
 
 	Mappings map[string]string `default:"k1=v1,k2=v2,k3=v3"`
 
 # Other supported types
 
-FlagSetFiller also supports following field types:
+FlagSetFiller also supports the following field types:
 
 - net.IP: format used by net.ParseIP()
 - net.IPNet: format used by net.ParseCIDR()

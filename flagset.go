@@ -306,7 +306,9 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
 		case t.Kind() == reflect.Uint:
 			err = f.processUint(fieldRef, hasDefaultTag, tagDefault, flagSet, renamed, usage, aliases)
 
-		case t == stringSliceType, fieldType == "stringSlice":
+		case t == stringSliceType,
+			fieldType == "stringSlice",
+			t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.String:
 			var override bool
 			if overrideValue, exists := tag.Lookup(TagOverrideValue); exists {
 				if value, err := strconv.ParseBool(overrideValue); err == nil {
@@ -350,18 +352,9 @@ func (f *FlagSetFiller) processField(flagSet *flag.FlagSet, fieldRef any,
 func (f *FlagSetFiller) processStringToStringMap(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
 	casted, ok := fieldRef.(*map[string]string)
 	if !ok {
-		_ = f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				return parseStringToStringMap(s), nil
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		_ = f.processCustom(fieldRef, func(s string) (any, error) {
+			return parseStringToStringMap(s), nil
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 		return
 	}
 	var val map[string]string
@@ -385,18 +378,9 @@ func (f *FlagSetFiller) processStringToStringMap(fieldRef any, hasDefaultTag boo
 func (f *FlagSetFiller) processStringSlice(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, override bool, aliases string) {
 	casted, ok := fieldRef.(*[]string)
 	if !ok {
-		_ = f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				return parseStringSlice(s, f.options.valueSplitPattern), nil
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		_ = f.processCustom(fieldRef, func(s string) (any, error) {
+			return parseStringSlice(s, f.options.valueSplitPattern), nil
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 		return
 	}
 	if hasDefaultTag {
@@ -421,19 +405,10 @@ func (f *FlagSetFiller) processStringSlice(fieldRef any, hasDefaultTag bool, tag
 func (f *FlagSetFiller) processUint(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*uint)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.Atoi(s)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.Atoi(s)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal uint
 	if hasDefaultTag {
@@ -458,19 +433,10 @@ func (f *FlagSetFiller) processUint(fieldRef any, hasDefaultTag bool, tagDefault
 func (f *FlagSetFiller) processUint64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*uint64)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.ParseUint(s, 10, 64)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.ParseUint(s, 10, 64)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal uint64
 	if hasDefaultTag {
@@ -493,19 +459,10 @@ func (f *FlagSetFiller) processUint64(fieldRef any, hasDefaultTag bool, tagDefau
 func (f *FlagSetFiller) processInt(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*int)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.Atoi(s)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.Atoi(s)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal int
 	if hasDefaultTag {
@@ -528,19 +485,10 @@ func (f *FlagSetFiller) processInt(fieldRef any, hasDefaultTag bool, tagDefault 
 func (f *FlagSetFiller) processInt64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*int64)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.ParseInt(s, 10, 64)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.ParseInt(s, 10, 64)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal int64
 	if hasDefaultTag {
@@ -563,19 +511,10 @@ func (f *FlagSetFiller) processInt64(fieldRef any, hasDefaultTag bool, tagDefaul
 func (f *FlagSetFiller) processDuration(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*time.Duration)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := time.ParseDuration(s)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := time.ParseDuration(s)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal time.Duration
 	if hasDefaultTag {
@@ -598,19 +537,10 @@ func (f *FlagSetFiller) processDuration(fieldRef any, hasDefaultTag bool, tagDef
 func (f *FlagSetFiller) processFloat64(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*float64)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.ParseFloat(s, 64)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.ParseFloat(s, 64)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal float64
 	if hasDefaultTag {
@@ -633,19 +563,10 @@ func (f *FlagSetFiller) processFloat64(fieldRef any, hasDefaultTag bool, tagDefa
 func (f *FlagSetFiller) processBool(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) (err error) {
 	casted, ok := fieldRef.(*bool)
 	if !ok {
-		return f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				value, err := strconv.ParseBool(s)
-				return value, err
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		return f.processCustom(fieldRef, func(s string) (any, error) {
+			value, err := strconv.ParseBool(s)
+			return value, err
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 	}
 	var defaultVal bool
 	if hasDefaultTag {
@@ -668,18 +589,9 @@ func (f *FlagSetFiller) processBool(fieldRef any, hasDefaultTag bool, tagDefault
 func (f *FlagSetFiller) processString(fieldRef any, hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) {
 	casted, ok := fieldRef.(*string)
 	if !ok {
-		_ = f.processCustom(
-			fieldRef,
-			func(s string) (any, error) {
-				return s, nil
-			},
-			hasDefaultTag,
-			tagDefault,
-			flagSet,
-			renamed,
-			usage,
-			aliases,
-		)
+		_ = f.processCustom(fieldRef, func(s string) (any, error) {
+			return s, nil
+		}, hasDefaultTag, tagDefault, flagSet, renamed, aliases, usage)
 		return
 	}
 	var defaultVal string
@@ -696,33 +608,61 @@ func (f *FlagSetFiller) processString(fieldRef any, hasDefaultTag bool, tagDefau
 	}
 }
 
-func (f *FlagSetFiller) processCustom(fieldRef any, converter func(string) (any, error), hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, usage string, aliases string) error {
+func (f *FlagSetFiller) processCustom(fieldRef any, converter func(string) (any, error), hasDefaultTag bool, tagDefault string, flagSet *flag.FlagSet, renamed string, aliases string, usage string) error {
 	if hasDefaultTag {
 		value, err := converter(tagDefault)
 		if err != nil {
 			return fmt.Errorf("failed to parse default into custom type: %w", err)
 		}
-		reflect.ValueOf(fieldRef).Elem().Set(reflect.ValueOf(value).Convert(reflect.TypeOf(fieldRef).Elem()))
+		if err := assignToFieldRef(fieldRef, value); err != nil {
+			return err
+		}
 	}
-	flagSet.Func(renamed, usage, func(s string) error {
+	valueFunc := func(s string) error {
 		value, err := converter(s)
 		if err != nil {
 			return err
 		}
-		reflect.ValueOf(fieldRef).Elem().Set(reflect.ValueOf(value).Convert(reflect.TypeOf(fieldRef).Elem()))
+		if err := assignToFieldRef(fieldRef, value); err != nil {
+			return err
+		}
 		return nil
-	})
+	}
+	flagSet.Func(renamed, usage, valueFunc)
+	flagSet.Lookup(renamed).DefValue = tagDefault
 	if aliases != "" {
 		for _, alias := range strings.Split(aliases, ",") {
-			flagSet.Func(alias, usage, func(s string) error {
-				value, err := converter(s)
-				if err != nil {
-					return err
-				}
-				reflect.ValueOf(fieldRef).Elem().Set(reflect.ValueOf(value).Convert(reflect.TypeOf(fieldRef).Elem()))
-				return nil
-			})
+			flagSet.Func(alias, usage, valueFunc)
+			flagSet.Lookup(alias).DefValue = tagDefault
 		}
+	}
+	return nil
+}
+
+func assignToFieldRef(fieldRef any, value any) error {
+	fieldElem := reflect.ValueOf(fieldRef).Elem()
+	fieldType := fieldElem.Type()
+
+	// Handle slice of custom type
+	if fieldType.Kind() == reflect.Slice {
+		// Ensure value is a slice
+		valSlice := reflect.ValueOf(value)
+		if valSlice.Kind() != reflect.Slice {
+			return fmt.Errorf("expected slice, got %v", valSlice.Kind())
+		}
+
+		// Convert each element to the target element type
+		convertedSlice := reflect.MakeSlice(fieldType, valSlice.Len(), valSlice.Len())
+		elemType := fieldType.Elem()
+
+		for i := 0; i < valSlice.Len(); i++ {
+			converted := reflect.ValueOf(valSlice.Index(i).Interface()).Convert(elemType)
+			convertedSlice.Index(i).Set(converted)
+		}
+		fieldElem.Set(convertedSlice)
+	} else {
+		// Handle scalar custom type
+		fieldElem.Set(reflect.ValueOf(value).Convert(fieldType))
 	}
 	return nil
 }

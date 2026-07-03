@@ -21,7 +21,7 @@ import "github.com/itzg/go-flagsfiller"
 
 - Populates Go's [flag.FlagSet](https://golang.org/pkg/flag/#FlagSet) from a struct of your choosing
 - By default, field names are converted to flag names using [kebab-case](https://en.wiktionary.org/wiki/kebab_case), but can be configured.
-- Use nested structs where flag name is prefixed by the nesting struct field names
+- Use nested structs where the flag name is prefixed by the nesting struct field names
 - Allows defaults to be given via struct tag `default`
 - Falls back to using instance field values as declared default
 - Declare flag usage via struct tag `usage`
@@ -35,7 +35,7 @@ import "github.com/itzg/go-flagsfiller"
 	- `net.IPNet` parse via net.ParseCIDR()
 	- `net.HardwareAddr` parse via net.ParseMAC()
 	- and all types that implement encoding.TextUnmarshaler interface
-- Optionally set flag values from environment variables. Similar to flag names, environment variable names are derived automatically from the field names
+- Optionally, set flag values from environment variables. Similar to flag names, environment variable names are derived automatically from the field names
 - New types could be supported via user code, via `RegisterSimpleType(ConvertFunc)`, check [time.go](time.go) and [net.go](net.go) to see how it works
 	- note: in case of a registered type also implements encoding.TextUnmarshaler, then registered type's ConvertFunc is preferred 
 
@@ -234,3 +234,13 @@ func (c *loadFromGitCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...i
 ## More information
 
 [Refer to the GoDocs](https://godoc.org/github.com/itzg/go-flagsfiller) for more information about this module.
+
+## Development
+
+To preview the package level rendered documentation use:
+
+```shell
+go doc -http
+```
+
+Navigate to the "Documentation" section to see what is rendered from `docs.go`
