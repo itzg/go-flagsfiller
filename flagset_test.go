@@ -53,16 +53,17 @@ func TestCustomFields(t *testing.T) {
 
 	t.Run("Default values", func(t *testing.T) {
 		type Config struct {
-			String      CustomStringType  `default:"stringValue"`
-			Bool        CustomBoolType    `default:"true"`
-			Float64     CustomFloat64     `default:"1.234"`
-			Duration    CustomDuration    `type:"duration" default:"2s"`
-			Int64       CustomInt64       `default:"-1"`
-			Int         CustomInt         `default:"-2"`
-			Uint64      CustomUint64      `default:"1"`
-			Uint        CustomUint        `default:"2"`
-			StringSlice CustomStringSlice `type:"stringSlice" default:"one,two"`
-			StringMap   CustomStringMap   `type:"stringMap" default:"one=value1,two=value2"`
+			String              CustomStringType   `default:"stringValue"`
+			Bool                CustomBoolType     `default:"true"`
+			Float64             CustomFloat64      `default:"1.234"`
+			Duration            CustomDuration     `type:"duration" default:"2s"`
+			Int64               CustomInt64        `default:"-1"`
+			Int                 CustomInt          `default:"-2"`
+			Uint64              CustomUint64       `default:"1"`
+			Uint                CustomUint         `default:"2"`
+			StringSlice         CustomStringSlice  `type:"stringSlice" default:"one,two"`
+			SliceOfCustomString []CustomStringType `default:"one,two"`
+			StringMap           CustomStringMap    `type:"stringMap" default:"one=value1,two=value2"`
 		}
 
 		var config Config
@@ -85,21 +86,23 @@ func TestCustomFields(t *testing.T) {
 		assert.Equal(t, CustomUint64(1), config.Uint64)
 		assert.Equal(t, CustomUint(2), config.Uint)
 		assert.Equal(t, CustomStringSlice{"one", "two"}, config.StringSlice)
+		assert.Equal(t, []CustomStringType{"one", "two"}, config.SliceOfCustomString)
 		assert.Equal(t, CustomStringMap{"one": "value1", "two": "value2"}, config.StringMap)
 	})
 
 	t.Run("Values set from arguments", func(t *testing.T) {
 		type Config struct {
-			String      CustomStringType
-			Bool        CustomBoolType
-			Float64     CustomFloat64
-			Duration    CustomDuration `type:"duration"`
-			Int64       CustomInt64
-			Int         CustomInt
-			Uint64      CustomUint64
-			Uint        CustomUint
-			StringSlice CustomStringSlice `type:"stringSlice"`
-			StringMap   CustomStringMap   `type:"stringMap"`
+			String              CustomStringType
+			Bool                CustomBoolType
+			Float64             CustomFloat64
+			Duration            CustomDuration `type:"duration"`
+			Int64               CustomInt64
+			Int                 CustomInt
+			Uint64              CustomUint64
+			Uint                CustomUint
+			StringSlice         CustomStringSlice `type:"stringSlice"`
+			SliceOfCustomString []CustomStringType
+			StringMap           CustomStringMap `type:"stringMap"`
 		}
 
 		var config Config
@@ -120,6 +123,7 @@ func TestCustomFields(t *testing.T) {
 			"--uint-64", "1",
 			"--uint", "2",
 			"--string-slice", "one,two",
+			"--slice-of-custom-string", "one,two",
 			"--string-map", "one=value1,two=value2",
 		})
 		require.NoError(t, err)
@@ -133,7 +137,58 @@ func TestCustomFields(t *testing.T) {
 		assert.Equal(t, CustomUint64(1), config.Uint64)
 		assert.Equal(t, CustomUint(2), config.Uint)
 		assert.Equal(t, CustomStringSlice{"one", "two"}, config.StringSlice)
+		assert.Equal(t, []CustomStringType{"one", "two"}, config.SliceOfCustomString)
 		assert.Equal(t, CustomStringMap{"one": "value1", "two": "value2"}, config.StringMap)
+	})
+
+	t.Run("test usage", func(t *testing.T) {
+		type Config struct {
+			String              CustomStringType   `default:"stringValue"`
+			Bool                CustomBoolType     `default:"true"`
+			Float64             CustomFloat64      `default:"1.234"`
+			Duration            CustomDuration     `type:"duration" default:"2s"`
+			Int64               CustomInt64        `default:"-1"`
+			Int                 CustomInt          `default:"-2"`
+			Uint64              CustomUint64       `default:"1"`
+			Uint                CustomUint         `default:"2"`
+			StringSlice         CustomStringSlice  `type:"stringSlice" default:"one,two"`
+			SliceOfCustomString []CustomStringType `default:"one,two"`
+			StringMap           CustomStringMap    `type:"stringMap" default:"one=value1,two=value2"`
+		}
+
+		var config Config
+
+		filler := flagsfiller.New()
+
+		var flagset flag.FlagSet
+		err := filler.Fill(&flagset, &config)
+		require.NoError(t, err)
+
+		buf := grabUsage(&flagset)
+		assert.Equal(t, `
+  -bool value
+    	 (default true)
+  -duration value
+    	 (default 2s)
+  -float-64 value
+    	 (default 1.234)
+  -int value
+    	 (default -2)
+  -int-64 value
+    	 (default -1)
+  -slice-of-custom-string value
+    	 (default one,two)
+  -string value
+    	 (default stringValue)
+  -string-map value
+    	 (default one=value1,two=value2)
+  -string-slice value
+    	 (default one,two)
+  -uint value
+    	 (default 2)
+  -uint-64 value
+    	 (default 1)
+`, buf.String())
 	})
 }
 
